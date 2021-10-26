@@ -1,0 +1,11 @@
+# ignore python caching stuff
+*/__pycache__/*
+*.py[cod]
+
+# ignore jupyter notebook caching stuff
+*/.ipynb_checkpoints/*
+
+# ignore report writing 
+*.gdoc
+*.doc
+*.docx
