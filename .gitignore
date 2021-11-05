@@ -4,8 +4,9 @@
 
 # ignore jupyter notebook caching stuff
 */.ipynb_checkpoints/*
+*checkpoint.ipynb
 
-# ignore report writing 
+# ignore report writing
 *.gdoc
 *.doc
 *.docx
