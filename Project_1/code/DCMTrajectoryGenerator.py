@@ -141,7 +141,9 @@ class DCMTrajectoryGenerator:
                 #the first step starts with double support and notice double support duration is not the same as other steps
                 DCMCompleteTrajectory[range(int((1-self.alpha)*self.dsTime/self.timeStep))] = listOfDoubleSupportTrajectories[stepNumber][:] # MODIFIED: fill the corresponding interval for DCM index for double support part
             else:
-                DCMCompleteTrajectory[slice(int((stepNumber*self.stepDuration - self.alpha*self.dsTime)/self.timeStep), (int((stepNumber*self.stepDuration + (1-self.alpha)*self.dsTime)/self.timeStep)))] = listOfDoubleSupportTrajectories[stepNumber][:] # MODIFIED
+                start = int((stepNumber*self.stepDuration - self.alpha*self.dsTime)/self.timeStep) # MODIFIED
+                DCMCompleteTrajectory[slice(start, start + len(listOfDoubleSupportTrajectories[stepNumber][:]))] = listOfDoubleSupportTrajectories[stepNumber][:] # MODIFIED
+                #DCMCompleteTrajectory[slice(int((stepNumber*self.stepDuration - self.alpha*self.dsTime)/self.timeStep), (int((stepNumber*self.stepDuration + (1-self.alpha)*self.dsTime)/self.timeStep)))] = listOfDoubleSupportTrajectories[stepNumber][:] # MODIFIED
 
 
         self.DCM = DCMCompleteTrajectory
