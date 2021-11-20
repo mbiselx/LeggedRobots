@@ -28,9 +28,9 @@ class HopfNetwork():
   """
   def __init__(self,
                 mu=1**2,                # converge to sqrt(mu)
-                omega_swing=2*2*np.pi,  # MUST EDIT
-                omega_stance=1*2*np.pi, # MUST EDIT
-                gait="TROT",            # change depending on desired gait
+                omega_swing=15*2*np.pi,  # MUST EDIT
+                omega_stance=2.5*2*np.pi, # MUST EDIT
+                gait="WALK",            # change depending on desired gait
                 coupling_strength=1,    # coefficient to multiply coupling matrix
                 couple=True,            # should couple
                 time_step=0.001,        # time step 
@@ -69,9 +69,12 @@ class HopfNetwork():
     [TODO] update all coupling matrices
     """
     self.PHI_trot = np.array([[0, 0.5, 0.5, 0],[0.5, 0, 0, 0.5],[0.5, 0, 0, 0.5],[0, 0.5, 0.5, 0]])
-    self.PHI_walk = np.zeros((4,4))
-    self.PHI_bound = np.zeros((4,4))
-    self.PHI_pace = np.zeros((4,4))
+    #self.PHI_trot = np.pi*np.array([[0, -1, -1, 1],[-1, 0, 1, -1],[-1, 1, 0, -1],[1, -1, -1, 0]])
+    # diagonal sequence walk:
+    self.PHI_walk = 2*np.pi*np.array([[0, 0.5, 0.75, 0.25],[0.5, 0, 0.25, 0.75],[0.25, 0.75, 0, 0.5],[0.75, 0.25, 0.5, 0]])
+    self.PHI_bound = np.array([[0, 0, 0.5, 0.5],[0, 0, 0.5, 0.5],[0.5, 0.5, 0, 0],[0.5, 0.5, 0, 0]])
+    #self.PHI_bound = np.array([[0, 1, -1, -1],[1, 0, -1, -1],[-1, -1, 0, 1],[-1, -1, 1, 0]])
+    self.PHI_pace = np.array([[0, 0.5, 0, 0.5],[0.5, 0, 0.5, 0],[0, 0.5, 0, 0.5],[0.5, 0, 0.5, 0]])
 
     if gait == "TROT":
       print('TROT')
@@ -164,7 +167,8 @@ if __name__ == "__main__":
   t = np.arange(TEST_STEPS)*TIME_STEP
 
   # [TODO] initialize data structures to save CPG and robot states
-
+  cpg_states = np.zeros((TEST_STEPS, 2, 4))
+  cpg_velocities = np.zeros((TEST_STEPS-1, 2, 4))
 
   ############## Sample Gains
   # joint PD gains
@@ -211,14 +215,38 @@ if __name__ == "__main__":
     env.step(action) 
 
     # [TODO] save any CPG or robot states
+    cpg_states[j] = cpg.X
+    if j > 0:
+      cpg_velocities[j-1] = cpg_states[j] - cpg_states[j-1]
+      cpg_velocities[j-1,1,:] = cpg_velocities[j-1,1,:] % (2*np.pi)
+      cpg_velocities[j-1] = cpg_velocities[j-1] / cpg._dt
 
 
 
   ##################################################### 
   # PLOTS
   #####################################################
-  # example
-  # fig = plt.figure()
-  # plt.plot(t,t, label='FR thigh')
-  # plt.legend()
-  # plt.show()
+  ax1 = plt.subplot(2, 2, 1)
+  plt.title("amplitude")
+  ax1.plot(t,cpg_states[:, 0, :])
+  ax1.legend(['FR', 'FL', 'RR', 'RL'])
+
+  ax2 = plt.subplot(2, 2, 2)
+  plt.title('theta')
+  ax2.plot(t,cpg_states[:, 1, :])
+  ax2.legend(['FR', 'FL', 'RR', 'RL'])
+
+  ax3 = plt.subplot(2, 2, 3)
+  plt.title('r velocity')
+  ax3.plot(t[0:-1],cpg_velocities[:, 0, :])
+  ax3.legend(['FR', 'FL', 'RR', 'RL'])
+
+  ax4 = plt.subplot(2, 2, 4)
+  plt.title('theta velocity')
+  ax4.plot(t[0:-1],cpg_velocities[:, 1, :])
+  ax4.legend([']FR', 'FL', 'RR', 'RL'])
+
+
+  plt.show()
+
+  print("finished!")
