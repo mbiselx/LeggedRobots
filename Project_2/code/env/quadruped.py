@@ -23,7 +23,7 @@ class Quadruped(object):
     Args:
       pybullet_client: The instance of BulletClient to manage different
         simulations.
-      robot_config: File with all of the relevant configs for the desired 
+      robot_config: File with all of the relevant configs for the desired
         quadruped.
       self_collision_enabled: Whether to enable self collision.
       accurate_motor_model_enabled: Whether to use the accurate DC motor model.
@@ -34,7 +34,7 @@ class Quadruped(object):
     """
     self._robot_config = robot_config
     self.num_motors = self._robot_config.NUM_MOTORS
-    self.num_legs = self._robot_config.NUM_LEGS 
+    self.num_legs = self._robot_config.NUM_LEGS
     self._pybullet_client = pybullet_client
     self._urdf_root = self._robot_config.URDF_ROOT # urdf_root
     self._self_collision_enabled = self_collision_enabled
@@ -52,7 +52,7 @@ class Quadruped(object):
     self._on_rack = on_rack
     self.render = render
     if self._accurate_motor_model_enabled:
-      self._kp = self._robot_config.MOTOR_KP 
+      self._kp = self._robot_config.MOTOR_KP
       self._kd = self._robot_config.MOTOR_KD
       self._motor_model = quadruped_motor.QuadrupedMotorModel(
                                     motor_control_mode=self._motor_control_mode,
@@ -142,8 +142,8 @@ class Quadruped(object):
     _, orientation_inversed = self._pybullet_client.invertTransform([0, 0, 0], orientation)
     # Transform the angular_velocity at neutral orientation using a neutral
     # translation and reverse of the given orientation.
-    relative_velocity, _ = self._pybullet_client.multiplyTransforms([0, 0, 0], 
-                            orientation_inversed, 
+    relative_velocity, _ = self._pybullet_client.multiplyTransforms([0, 0, 0],
+                            orientation_inversed,
                             angular_velocity,
                              self._pybullet_client.getQuaternionFromEuler([0, 0, 0]))
     return np.asarray(relative_velocity)
@@ -207,10 +207,10 @@ class Quadruped(object):
 
 
   def GetContactInfo(self):
-    """ Returns 
+    """ Returns
     (1) num valid contacts (only those between a foot and the ground)
     (2) num invalid contacts (either between a limb and the ground (other than the feet) or any self collisions
-    (3) normal force at each foot (0 if in the air) 
+    (3) normal force at each foot (0 if in the air)
     (4) boolean for each foot in contact (1) or not (0)
     """
     numValidContacts = 0
@@ -252,8 +252,8 @@ class Quadruped(object):
                                                 controlMode=self._pybullet_client.TORQUE_CONTROL,
                                                 force=torque)
 
-  def _SetDesiredMotorAngleById(self, motor_id, desired_angle): 
-    # get max_force 
+  def _SetDesiredMotorAngleById(self, motor_id, desired_angle):
+    # get max_force
     max_force = self._robot_config.TORQUE_LIMITS[self._joint_ids.index(motor_id)]
     max_vel = self._robot_config.VELOCITY_LIMITS[self._joint_ids.index(motor_id)]
     self._pybullet_client.setJointMotorControl2(bodyIndex=self.quadruped,
@@ -294,10 +294,10 @@ class Quadruped(object):
 
 
   ######################################################################################
-  # Jacobian, IK, etc. 
+  # Jacobian, IK, etc.
   ######################################################################################
   def ComputeJacobianAndPosition(self, legID):
-    """ Get Jacobian and foot position of leg legID. 
+    """ Get Jacobian and foot position of leg legID.
     Leg 0: FR; Leg 1: FL; Leg 2: RR ; Leg 3: RL;
     """
     # joint positions of leg legID
@@ -332,7 +332,7 @@ class Quadruped(object):
     J[2, 1] = l2 * s2 * c1 + l3 * s23 * c1
     J[0, 2] = -l3 * c23
     J[1, 2] = -l3 * s23 *s1
-    J[2, 2] = l3 * s23 * c1  
+    J[2, 2] = l3 * s23 * c1
 
     # foot pos
     pos = np.zeros(3)
@@ -342,12 +342,12 @@ class Quadruped(object):
 
     return J, pos
 
-  def ComputeInverseKinematics(self,legID, xyz_coord):
-    """ Get joint angles for leg legID with desired xyz position in leg frame. 
+  def ComputeInverseKinematics(self, legID, xyz_coord):
+    """ Get joint angles for leg legID with desired xyz position in leg frame.
 
     Leg 0: FR; Leg 1: FL; Leg 2: RR ; Leg 3: RL;
 
-    From SpotMicro: 
+    From SpotMicro:
     https://github.com/OpenQuadruped/spot_mini_mini/blob/spot/spotmicro/Kinematics/LegKinematics.py
     """
     # rename links
@@ -410,7 +410,7 @@ class Quadruped(object):
                                                self._pybullet_client.JOINT_FIXED, [0, 0, 0],
                                                [0, 0, 0], [0, 0, 1], childFrameOrientation=self._GetDefaultInitOrientation())
     else:
-      self._pybullet_client.resetBasePositionAndOrientation(self.quadruped, 
+      self._pybullet_client.resetBasePositionAndOrientation(self.quadruped,
                                                             self._GetDefaultInitPosition(),
                                                             self._GetDefaultInitOrientation())
       self._pybullet_client.resetBaseVelocity(self.quadruped, [0, 0, 0], [0, 0, 0])
@@ -515,7 +515,7 @@ class Quadruped(object):
     """Records the mass information from the URDF file.
     Divide into base, leg, foot, and total (all links)
     """
-    # base 
+    # base
     self._base_mass_urdf = []
     self._base_inertia_urdf = []
 
@@ -587,7 +587,7 @@ class Quadruped(object):
           joint_info[0], -1, linearDamping=0, angularDamping=0)
 
   def _SetLateralFriction(self,lateral_friction=1.0):
-    """ Lateral friction to be set for every link. 
+    """ Lateral friction to be set for every link.
     NOTE: pybullet default is 0.5 - so call to set to 1 as default
     """
     num_joints = self._pybullet_client.getNumJoints(self.quadruped)
@@ -597,7 +597,7 @@ class Quadruped(object):
   def _SetMaxJointVelocities(self):
     """Set maximum joint velocities from robot_config, the pybullet default is 100 rad/s """
     for i, link_id in enumerate(self._joint_ids):
-      self._pybullet_client.changeDynamics(self.quadruped, link_id, maxJointVelocity=self._robot_config.VELOCITY_LIMITS[i]) 
+      self._pybullet_client.changeDynamics(self.quadruped, link_id, maxJointVelocity=self._robot_config.VELOCITY_LIMITS[i])
 
   def GetBaseMassFromURDF(self):
     """Get the mass of the base from the URDF file."""

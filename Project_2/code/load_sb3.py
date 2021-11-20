@@ -12,7 +12,7 @@ else: # linux
   matplotlib.use('TkAgg')
 
 # stable baselines
-from stable_baselines3.common.monitor import load_results 
+from stable_baselines3.common.monitor import load_results
 from stable_baselines3.common.vec_env import VecNormalize
 from stable_baselines3 import PPO, SAC
 from stable_baselines3.common.cmd_util import make_vec_env
@@ -33,17 +33,17 @@ log_dir = interm_dir + ''
 env_config = {}
 env_config['render'] = True
 env_config['record_video'] = False
-env_config['add_noise'] = False 
+env_config['add_noise'] = False
 
-# get latest model and normalization stats, and plot 
+# get latest model and normalization stats, and plot
 stats_path = os.path.join(log_dir, "vec_normalize.pkl")
 model_name = get_latest_model(log_dir)
 monitor_results = load_results(log_dir)
 print(monitor_results)
 plot_results([log_dir] , 10e10, 'timesteps', LEARNING_ALG + ' ')
-plt.show() 
+plt.show()
 
-# reconstruct env 
+# reconstruct env
 env = lambda: QuadrupedGymEnv(**env_config)
 env = make_vec_env(env, n_envs=1)
 env = VecNormalize.load(stats_path, env)
@@ -60,17 +60,17 @@ print("\nLoaded model", model_name, "\n")
 obs = env.reset()
 episode_reward = 0
 
-# [TODO] initialize arrays to save data from simulation 
+# [TODO  initialize arrays to save data from simulation
 #
 
 for i in range(2000):
-    action, _states = model.predict(obs,deterministic=False) # sample at test time? ([TODO]: test)
+    action, _states = model.predict(obs,deterministic=False) # sample at test time? ([TODO : test)
     obs, rewards, dones, info = env.step(action)
     episode_reward += rewards
     if dones:
         print('episode_reward', episode_reward)
         episode_reward = 0
 
-    # [TODO] save data from current robot states for plots 
+    # [TODO  save data from current robot states for plots
 
-# [TODO] make plots:
+# [TODO  make plots:
