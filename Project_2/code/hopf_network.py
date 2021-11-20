@@ -10,8 +10,9 @@ import numpy as np
 import matplotlib
 from sys import platform
 if platform =="darwin": # mac
-  import PyQt5
-  matplotlib.use("Qt5Agg")
+  #import PyQt5
+  #matplotlib.use("Qt5Agg")
+  pass
 else: # linux
   matplotlib.use('TkAgg')
 
@@ -27,7 +28,7 @@ class HopfNetwork():
   """
   def __init__(self,
                 mu=1**2,                # converge to sqrt(mu)
-                omega_swing=1*2*np.pi,  # MUST EDIT
+                omega_swing=2*2*np.pi,  # MUST EDIT
                 omega_stance=1*2*np.pi, # MUST EDIT
                 gait="TROT",            # change depending on desired gait
                 coupling_strength=1,    # coefficient to multiply coupling matrix
@@ -67,7 +68,7 @@ class HopfNetwork():
     """ For coupling oscillators in phase space. 
     [TODO] update all coupling matrices
     """
-    self.PHI_trot = np.zeros((4,4))
+    self.PHI_trot = np.array([[0, 0.5, 0.5, 0],[0.5, 0, 0, 0.5],[0.5, 0, 0, 0.5],[0, 0.5, 0.5, 0]])
     self.PHI_walk = np.zeros((4,4))
     self.PHI_bound = np.zeros((4,4))
     self.PHI_pace = np.zeros((4,4))
@@ -95,8 +96,13 @@ class HopfNetwork():
     self._integrate_hopf_equations()
     
     # map CPG variables to Cartesian foot xz positions (Equations 8, 9) 
-    x = np.zeros(4) # [TODO]
-    z = np.zeros(4) # [TODO]
+    x = -self._des_step_len*self.X[0, :]*np.cos(self.X[1, :]) # [TODO]
+    z = np.zeros(4)
+    for i in range(4):
+      if np.sin(self.X[1, i]) > 0:
+        z[i] = -self._robot_height + self._ground_clearance*np.sin(self.X[1, i])
+      else:
+        z[i] = -self._robot_height + self._ground_penetration*np.sin(self.X[1, i])
 
     return x, z
       
@@ -111,21 +117,24 @@ class HopfNetwork():
     # loop through each leg's oscillator
     for i in range(4):
       # get r_i, theta_i from X
-      r, theta = 0, 0 # [TODO]
+      r, theta = self.X[0, i], self.X[1, i] # [TODO]
       # compute r_dot (Equation 6)
-      r_dot = 0 # [TODO]
+      r_dot = alpha * (self._mu - r**2) * r # [TODO]
       # determine whether oscillator i is in swing or stance phase to set natural frequency omega_swing or omega_stance (see Section 3)
-      theta_dot = 0 # [TODO]
+      if np.sin(theta) > 0:
+        theta_dot = self._omega_swing
+      else:
+        theta_dot = self._omega_stance
 
       # loop through other oscillators to add coupling (Equation 7)
       if self._couple:
-        theta_dot += 0 # [TODO]
+        theta_dot += np.sum(self.X[0,:]*self._coupling_strength*np.sin(theta*np.ones(4) - self.X[1,:] - self.PHI[i,:])) # [TODO]
 
       # set X_dot[:,i]
       X_dot[:,i] = [r_dot, theta_dot]
 
     # integrate 
-    self.X = np.zeros((2,4)) # [TODO]
+    self.X = self.X + X_dot * self._dt # [TODO]
     # mod phase variables to keep between 0 and 2pi
     self.X[1,:] = self.X[1,:] % (2*np.pi)
 
@@ -151,7 +160,7 @@ if __name__ == "__main__":
   # initialize Hopf Network, supply gait
   cpg = HopfNetwork(time_step=TIME_STEP)
 
-  TEST_STEPS = int(10 / (TIME_STEP))
+  TEST_STEPS = int(5 / (TIME_STEP))
   t = np.arange(TEST_STEPS)*TIME_STEP
 
   # [TODO] initialize data structures to save CPG and robot states
@@ -172,8 +181,8 @@ if __name__ == "__main__":
     # get desired foot positions from CPG 
     xs,zs = cpg.update()
     # [TODO] get current motor angles and velocities for joint PD, see GetMotorAngles(), GetMotorVelocities() in quadruped.py
-    # q = 
-    # dq = 
+    q = env.robot.GetMotorAngles()
+    dq = env.robot.GetMotorVelocities()
 
     # loop through desired foot positions and calculate torques
     for i in range(4):
@@ -182,18 +191,18 @@ if __name__ == "__main__":
       # get desired foot i pos (xi, yi, zi) in leg frame
       leg_xyz = np.array([xs[i],sideSign[i] * foot_y,zs[i]])
       # call inverse kinematics to get corresponding joint angles (see ComputeInverseKinematics() in quadruped.py)
-      leg_q = np.zeros(3) # [TODO] 
+      leg_q = env.robot.ComputeInverseKinematics(i, leg_xyz) # [TODO] 
       # Add joint PD contribution to tau for leg i (Equation 4)
-      tau += np.zeros(3) # [TODO] 
+      tau += kp*(leg_q-q[i*3:i*3+3])+kd*(0-dq[i*3:i*3+3]) # [TODO]  # what is dqd????????
 
       # add Cartesian PD contribution
       if ADD_CARTESIAN_PD:
         # Get current Jacobian and foot position in leg frame (see ComputeJacobianAndPosition() in quadruped.py)
-        # [TODO] 
+        J, pos = env.robot.ComputeJacobianAndPosition(i) # [TODO] 
         # Get current foot velocity in leg frame (Equation 2)
-        # [TODO] 
+        v = np.matmul(J, dq[i*3:i*3+3]) # [TODO] 
         # Calculate torque contribution from Cartesian PD (Equation 5) [Make sure you are using matrix multiplications]
-        tau += np.zeros(3) # [TODO]
+        tau += np.matmul(np.transpose(J), np.matmul(kpCartesian, (leg_xyz-pos))+ np.matmul(kdCartesian, (-v))) # [TODO] # vd???
 
       # Set tau for legi in action vector
       action[3*i:3*i+3] = tau
@@ -210,6 +219,6 @@ if __name__ == "__main__":
   #####################################################
   # example
   # fig = plt.figure()
-  # plt.plot(t,joint_pos[1,:], label='FR thigh')
+  # plt.plot(t,t, label='FR thigh')
   # plt.legend()
   # plt.show()
