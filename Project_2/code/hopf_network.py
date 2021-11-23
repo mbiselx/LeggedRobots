@@ -28,12 +28,12 @@ class HopfNetwork():
   """
   def __init__(self,
                 mu=1**2,                # converge to sqrt(mu)
-                # omega_swing=15*2*np.pi,  # for walk and trot
-                # omega_stance=2.5*2*np.pi, # for walk and trot
-                # gait="WALK",            # change depending on desired gait
-                omega_swing=15*2*np.pi,  # for bound 15
-                omega_stance=25*2*np.pi, # for bound 25
-                gait="BOUND",            # change depending on desired gait
+                omega_swing=15*2*np.pi,  # for walk and trot
+                omega_stance=2.5*2*np.pi, # for walk and trot
+                gait="WALK",            # change depending on desired gait
+                # omega_swing=15*2*np.pi,  # for bound
+                # omega_stance=25*2*np.pi, # for bound
+                # gait="BOUND",            # change depending on desired gait
                 coupling_strength=1,    # coefficient to multiply coupling matrix
                 couple=True,            # should couple
                 time_step=0.001,        # time step 
@@ -169,12 +169,13 @@ if __name__ == "__main__":
   # initialize Hopf Network, supply gait
   cpg = HopfNetwork(time_step=TIME_STEP)
 
-  TEST_STEPS = int(5 / (TIME_STEP))
+  TEST_STEPS = int(3 / (TIME_STEP))
   t = np.arange(TEST_STEPS)*TIME_STEP
 
   # [TODO] initialize data structures to save CPG and robot states
   cpg_states = np.zeros((TEST_STEPS, 2, 4))
   cpg_velocities = np.zeros((TEST_STEPS-1, 2, 4))
+  energy = 0
 
   ############## Sample Gains
   # joint PD gains
@@ -227,6 +228,10 @@ if __name__ == "__main__":
       cpg_velocities[j-1,1,:] = cpg_velocities[j-1,1,:] % (2*np.pi)
       cpg_velocities[j-1] = cpg_velocities[j-1] / cpg._dt
 
+    energy += np.sum(env.robot.GetMotorTorques()*env.robot.GetMotorVelocities())*TIME_STEP
+
+    
+
 
 
   ##################################################### 
@@ -252,7 +257,9 @@ if __name__ == "__main__":
   ax4.plot(t[0:-1],cpg_velocities[:, 1, :])
   ax4.legend([']FR', 'FL', 'RR', 'RL'])
 
-
   plt.show()
+
+  print("Avg velocity: " + str(env.robot.GetBasePosition()[0]/(TEST_STEPS*TIME_STEP)))
+  print("CoT: " + str(energy / (sum(env.robot.GetTotalMassFromURDF()) * 9.81 * env.robot.GetBasePosition()[0])))
 
   print("finished!")
