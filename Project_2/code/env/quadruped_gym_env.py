@@ -405,8 +405,8 @@ class QuadrupedGymEnv(gym.Env):
       time.sleep(0.2)
     for _ in range(1000):
       self.robot.ApplyAction(init_motor_angles)
-      if self._is_render:
-        time.sleep(0.001)
+      #if self._is_render:
+        #time.sleep(0.001)
       self._pybullet_client.stepSimulation()
     
     # set control mode back

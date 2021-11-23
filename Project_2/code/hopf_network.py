@@ -28,16 +28,19 @@ class HopfNetwork():
   """
   def __init__(self,
                 mu=1**2,                # converge to sqrt(mu)
-                omega_swing=15*2*np.pi,  # MUST EDIT
-                omega_stance=2.5*2*np.pi, # MUST EDIT
-                gait="WALK",            # change depending on desired gait
+                # omega_swing=15*2*np.pi,  # for walk and trot
+                # omega_stance=2.5*2*np.pi, # for walk and trot
+                # gait="WALK",            # change depending on desired gait
+                omega_swing=15*2*np.pi,  # for bound 15
+                omega_stance=25*2*np.pi, # for bound 25
+                gait="BOUND",            # change depending on desired gait
                 coupling_strength=1,    # coefficient to multiply coupling matrix
                 couple=True,            # should couple
                 time_step=0.001,        # time step 
                 ground_clearance=0.05,  # foot swing height 
                 ground_penetration=0.01,# foot stance penetration into ground 
                 robot_height=0.25,      # in nominal case (standing) 
-                des_step_len=0.04,      # desired step length 
+                des_step_len=0.04,      # desired step length
                 ):
     
     ###############
@@ -68,13 +71,16 @@ class HopfNetwork():
     """ For coupling oscillators in phase space. 
     [TODO] update all coupling matrices
     """
-    self.PHI_trot = np.array([[0, 0.5, 0.5, 0],[0.5, 0, 0, 0.5],[0.5, 0, 0, 0.5],[0, 0.5, 0.5, 0]])
-    #self.PHI_trot = np.pi*np.array([[0, -1, -1, 1],[-1, 0, 1, -1],[-1, 1, 0, -1],[1, -1, -1, 0]])
+    self.PHI_trot = 2 * np.pi * np.array([[0, 0.5, 0.5, 0],[0.5, 0, 0, 0.5],[0.5, 0, 0, 0.5],[0, 0.5, 0.5, 0]]) # from myself
+    #self.PHI_trot = np.pi*np.array([[0, -1, -1, 1],[-1, 0, 1, -1],[-1, 1, 0, -1],[1, -1, -1, 0]]) # from paper
+    #self.PHI_trot = 2*np.pi * np.array([[0, 0.5, 0.5, 0],[-0.5, 0, 0, -0.5],[-0.5, 0, 0, -0.5],[0 , 0.5, 0.5, 0]]) # from michi
     # diagonal sequence walk:
-    self.PHI_walk = 2*np.pi*np.array([[0, 0.5, 0.75, 0.25],[0.5, 0, 0.25, 0.75],[0.25, 0.75, 0, 0.5],[0.75, 0.25, 0.5, 0]])
-    self.PHI_bound = np.array([[0, 0, 0.5, 0.5],[0, 0, 0.5, 0.5],[0.5, 0.5, 0, 0],[0.5, 0.5, 0, 0]])
+    #self.PHI_walk = 2*np.pi*np.array([[0, 0.5, 0.75, 0.25],[0.5, 0, 0.25, 0.75],[0.25, 0.75, 0, 0.5],[0.75, 0.25, 0.5, 0]])
+    # lateral sequence walk
+    self.PHI_walk = 2*np.pi*np.array([[0, 0.5, 0.25, 0.75],[0.5, 0, 0.75, 0.25],[0.75, 0.25, 0, 0.5],[0.25, 0.75, 0.5, 0]])
+    self.PHI_bound = 2*np.pi*np.array([[0, 0, 0.5, 0.5],[0, 0, 0.5, 0.5],[0.5, 0.5, 0, 0],[0.5, 0.5, 0, 0]])
     #self.PHI_bound = np.array([[0, 1, -1, -1],[1, 0, -1, -1],[-1, -1, 0, 1],[-1, -1, 1, 0]])
-    self.PHI_pace = np.array([[0, 0.5, 0, 0.5],[0.5, 0, 0.5, 0],[0, 0.5, 0, 0.5],[0.5, 0, 0.5, 0]])
+    self.PHI_pace = 2*np.pi*np.array([[0, 0.5, 0, 0.5],[0.5, 0, 0.5, 0],[0, 0.5, 0, 0.5],[0.5, 0, 0.5, 0]])
 
     if gait == "TROT":
       print('TROT')
@@ -131,7 +137,7 @@ class HopfNetwork():
 
       # loop through other oscillators to add coupling (Equation 7)
       if self._couple:
-        theta_dot += np.sum(self.X[0,:]*self._coupling_strength*np.sin(theta*np.ones(4) - self.X[1,:] - self.PHI[i,:])) # [TODO]
+        theta_dot += np.sum(self.X[0,:]*self._coupling_strength*np.sin(self.X[1,:] - theta*np.ones(4) - self.PHI[i,:])) # [TODO]
 
       # set X_dot[:,i]
       X_dot[:,i] = [r_dot, theta_dot]
