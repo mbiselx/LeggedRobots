@@ -155,7 +155,7 @@ class QuadrupedGymEnv(gym.Env):
                                          -self._robot_config.VELOCITY_LIMITS,
                                          np.array([-1.0]*4))) -  OBSERVATION_EPS)
     elif self._observation_space_mode == "LR_COURSE_OBS":
-      # [TODO  Set observation upper and lower ranges. What are reasonable limits?
+      # [TODO] Set observation upper and lower ranges. What are reasonable limits?
       # Note 50 is arbitrary below, you may have more or less
       observation_high = (np.zeros(50) + OBSERVATION_EPS)
       observation_low = (np.zeros(50) -  OBSERVATION_EPS)
@@ -239,7 +239,7 @@ class QuadrupedGymEnv(gym.Env):
 
   def _reward_lr_course(self):
     """ Implement your reward function here. How will you improve upon the above? """
-    # [TODO  add your reward function.
+    # [TODO] add your reward function.
     return 0
 
   def _reward(self):
@@ -403,7 +403,7 @@ class QuadrupedGymEnv(gym.Env):
     except:
       pass
     init_motor_angles = self._robot_config.INIT_MOTOR_ANGLES + self._robot_config.JOINT_OFFSETS
-    # if self._is_render: # NOTE: modified 
+    # if self._is_render: # NOTE: modified
     #   time.sleep(0.2)
     for _ in range(1000):
       self.robot.ApplyAction(init_motor_angles)
