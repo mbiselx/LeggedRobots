@@ -25,38 +25,38 @@ ACTION_EPS = 0.01
 OBSERVATION_EPS = 0.01
 VIDEO_LOG_DIRECTORY = 'videos/' + datetime.datetime.now().strftime("vid-%Y-%m-%d-%H-%M-%S-%f")
 
-# Implemented observation spaces for deep reinforcement learning: 
+# Implemented observation spaces for deep reinforcement learning:
 #   "DEFAULT":    motor angles and velocities, body orientation
-#   "LR_COURSE_OBS":  [TODO: what should you include? what is reasonable to measure on the real system?] 
+#   "LR_COURSE_OBS":  [TODO: what should you include? what is reasonable to measure on the real system?]
 
 # Tasks to be learned with reinforcement learning
 #     - "FWD_LOCOMOTION"
 #         reward forward progress only
-#     - "LR_COURSE_TASK" 
+#     - "LR_COURSE_TASK"
 #         [TODO: what should you train for?]
 #         Ideally we want to command A1 to run in any direction while expending minimal energy
 #         It is suggested to first train to run at 3 sample velocities (0.5 m/s, 1 m/s, 1.5 m/s)
-#         How will you construct your reward function? 
+#         How will you construct your reward function?
 
 # Motor control modes:
-#   - "TORQUE": 
+#   - "TORQUE":
 #         supply raw torques to each motor (12)
-#   - "PD": 
+#   - "PD":
 #         supply desired joint positions to each motor (12)
 #         torques are computed based on the joint position/velocity error
-#   - "CARTESIAN_PD": 
+#   - "CARTESIAN_PD":
 #         supply desired foot positions for each leg (12)
 #         torques are computed based on the foot position/velocity error
 
 
 EPISODE_LENGTH = 10   # how long before we reset the environment (max episode length for RL)
-MAX_FWD_VELOCITY = 5  # to avoid exploiting simulator dynamics, cap max reward for body velocity 
+MAX_FWD_VELOCITY = 5  # to avoid exploiting simulator dynamics, cap max reward for body velocity
 
 
 class QuadrupedGymEnv(gym.Env):
   """The gym environment for a quadruped {Unitree A1}.
 
-  It simulates the locomotion of a quadrupedal robot. 
+  It simulates the locomotion of a quadrupedal robot.
   The state space, action space, and reward functions can be chosen with:
   observation_space_mode, motor_control_mode, task_env.
   """
@@ -65,7 +65,7 @@ class QuadrupedGymEnv(gym.Env):
       robot_config=robot_config,
       isRLGymInterface=True,
       time_step=0.001,
-      action_repeat=10,  
+      action_repeat=10,
       distance_weight=2,
       energy_weight=0.008,
       motor_control_mode="PD",
@@ -96,7 +96,7 @@ class QuadrupedGymEnv(gym.Env):
       render: Whether to render the simulation.
       record_video: Whether to record a video of each trial.
       add_noise: vary coefficient of friction
-      test_env: add random terrain 
+      test_env: add random terrain
     """
     self._robot_config = robot_config
     self._isRLGymInterface = isRLGymInterface
@@ -119,12 +119,12 @@ class QuadrupedGymEnv(gym.Env):
     else:
       self._observation_noise_stdev = 0.0
 
-    # other bookkeeping 
-    self._num_bullet_solver_iterations = int(300 / action_repeat) 
+    # other bookkeeping
+    self._num_bullet_solver_iterations = int(300 / action_repeat)
     self._env_step_counter = 0
     self._sim_step_counter = 0
     self._last_base_position = [0, 0, 0]
-    self._last_frame_time = 0.0 # for rendering 
+    self._last_frame_time = 0.0 # for rendering
     self._MAX_EP_LEN = EPISODE_LENGTH # max sim time in seconds, arbitrary
     self._action_bound = 1.0
 
@@ -139,9 +139,9 @@ class QuadrupedGymEnv(gym.Env):
     self.videoLogID = None
     self.seed()
     self.reset()
-  
+
   ######################################################################################
-  # RL Observation and Action spaces 
+  # RL Observation and Action spaces
   ######################################################################################
   def setupObservationSpace(self):
     """Set up observation space for RL. """
@@ -153,7 +153,7 @@ class QuadrupedGymEnv(gym.Env):
                                          -self._robot_config.VELOCITY_LIMITS,
                                          np.array([-1.0]*4))) -  OBSERVATION_EPS)
     elif self._observation_space_mode == "LR_COURSE_OBS":
-      # [TODO] Set observation upper and lower ranges. What are reasonable limits? 
+      # [TODO] Set observation upper and lower ranges. What are reasonable limits?
       # Note 50 is arbitrary below, you may have more or less
       observation_high = (np.zeros(50) + OBSERVATION_EPS)
       observation_low = (np.zeros(50) -  OBSERVATION_EPS)
@@ -176,7 +176,7 @@ class QuadrupedGymEnv(gym.Env):
   def _get_observation(self):
     """Get observation, depending on obs space selected. """
     if self._observation_space_mode == "DEFAULT":
-      self._observation = np.concatenate((self.robot.GetMotorAngles(), 
+      self._observation = np.concatenate((self.robot.GetMotorAngles(),
                                           self.robot.GetMotorVelocities(),
                                           self.robot.GetBaseOrientation() ))
     elif self._observation_space_mode == "LR_COURSE_OBS":
@@ -220,7 +220,7 @@ class QuadrupedGymEnv(gym.Env):
 
   def _termination(self):
     """Decide whether we should stop the episode and reset the environment. """
-    return self.is_fallen() 
+    return self.is_fallen()
 
   def _reward_fwd_locomotion(self):
     """ Reward progress in the positive world x direction.  """
@@ -237,7 +237,7 @@ class QuadrupedGymEnv(gym.Env):
 
   def _reward_lr_course(self):
     """ Implement your reward function here. How will you improve upon the above? """
-    # [TODO] add your reward function. 
+    # [TODO] add your reward function.
     return 0
 
   def _reward(self):
@@ -250,7 +250,7 @@ class QuadrupedGymEnv(gym.Env):
       raise ValueError("This task mode not implemented yet.")
 
   ######################################################################################
-  # Step simulation, map policy network actions to joint commands, etc. 
+  # Step simulation, map policy network actions to joint commands, etc.
   ######################################################################################
   def _transform_action_to_motor_command(self, action):
     """ Map actions from RL (i.e. in [-1,1]) to joint commands based on motor_control_mode. """
@@ -271,8 +271,8 @@ class QuadrupedGymEnv(gym.Env):
     return np.clip(new_a, lower_lim, upper_lim)
 
   def ScaleActionToCartesianPos(self,actions):
-    """Scale RL action to Cartesian PD ranges. 
-    Edit ranges, limits etc., but make sure to use Cartesian PD to compute the torques. 
+    """Scale RL action to Cartesian PD ranges.
+    Edit ranges, limits etc., but make sure to use Cartesian PD to compute the torques.
     """
     # clip RL actions to be between -1 and 1 (standard RL technique)
     u = np.clip(actions,-1,1)
@@ -295,7 +295,7 @@ class QuadrupedGymEnv(gym.Env):
       # desired foot position i (from RL above)
       Pd = np.zeros(3) # [TODO]
       # desired foot velocity i
-      vd = np.zeros(3) 
+      vd = np.zeros(3)
       # foot velocity in leg frame i (Equation 2)
       # [TODO]
       # calculate torques with Cartesian PD (Equation 5) [Make sure you are using matrix multiplications]
@@ -312,12 +312,12 @@ class QuadrupedGymEnv(gym.Env):
     # save motor torques and velocities to compute power in reward function
     self._dt_motor_torques = []
     self._dt_motor_velocities = []
-    
+
     for _ in range(self._action_repeat):
-      if self._isRLGymInterface: 
+      if self._isRLGymInterface:
         proc_action = self._transform_action_to_motor_command(curr_act)
       else:
-        proc_action = curr_act 
+        proc_action = curr_act
       self.robot.ApplyAction(proc_action)
       self._pybullet_client.stepSimulation()
       self._sim_step_counter += 1
@@ -334,7 +334,7 @@ class QuadrupedGymEnv(gym.Env):
     if self._termination() or self.get_sim_time() > self._MAX_EP_LEN:
       done = True
 
-    return np.array(self._noisy_observation()), reward, done, {'base_pos': self.robot.GetBasePosition()} 
+    return np.array(self._noisy_observation()), reward, done, {'base_pos': self.robot.GetBasePosition()}
 
   ######################################################################################
   # Reset
@@ -348,7 +348,7 @@ class QuadrupedGymEnv(gym.Env):
       self._pybullet_client.setPhysicsEngineParameter(
           numSolverIterations=int(self._num_bullet_solver_iterations))
       self._pybullet_client.setTimeStep(self._time_step)
-      self.plane = self._pybullet_client.loadURDF(pybullet_data.getDataPath()+"/plane.urdf", 
+      self.plane = self._pybullet_client.loadURDF(pybullet_data.getDataPath()+"/plane.urdf",
                                                   basePosition=[80,0,0]) # to extend available running space (shift)
       self._pybullet_client.changeVisualShape(self.plane, -1, rgbaColor=[1, 1, 1, 0.9])
       self._pybullet_client.configureDebugVisualizer(
@@ -405,10 +405,10 @@ class QuadrupedGymEnv(gym.Env):
       time.sleep(0.2)
     for _ in range(1000):
       self.robot.ApplyAction(init_motor_angles)
-      if self._is_render:
-        time.sleep(0.001)
+      # if self._is_render:
+      #   time.sleep(0.001)
       self._pybullet_client.stepSimulation()
-    
+
     # set control mode back
     self._motor_control_mode = tmp_save_motor_control_mode_ENV
     self.robot._motor_control_mode = tmp_save_motor_control_mode_ROB
@@ -418,11 +418,11 @@ class QuadrupedGymEnv(gym.Env):
       pass
 
   ######################################################################################
-  # Render, record videos, bookkeping, and misc pybullet helpers.  
+  # Render, record videos, bookkeping, and misc pybullet helpers.
   ######################################################################################
   def startRecordingVideo(self,name):
     self.videoLogID = self._pybullet_client.startStateLogging(
-                            self._pybullet_client.STATE_LOGGING_VIDEO_MP4, 
+                            self._pybullet_client.STATE_LOGGING_VIDEO_MP4,
                             name)
 
   def stopRecordingVideo(self):
@@ -470,7 +470,7 @@ class QuadrupedGymEnv(gym.Env):
     time_to_sleep = self._time_step - time_spent
     if time_to_sleep > 0 and (time_to_sleep < self._time_step):
       time.sleep(time_to_sleep)
-      
+
     base_pos = self.robot.GetBasePosition()
     camInfo = self._pybullet_client.getDebugVisualizerCamera()
     curTargetPos = camInfo[11]
@@ -488,9 +488,9 @@ class QuadrupedGymEnv(gym.Env):
     # default rendering options
     self._render_width = 960
     self._render_height = 720
-    self._cam_dist = 1.0 
+    self._cam_dist = 1.0
     self._cam_yaw = 0
-    self._cam_pitch = -30 
+    self._cam_pitch = -30
     # get rid of visualizer things
     self._pybullet_client.configureDebugVisualizer(self._pybullet_client.COV_ENABLE_RGB_BUFFER_PREVIEW,0)
     self._pybullet_client.configureDebugVisualizer(self._pybullet_client.COV_ENABLE_DEPTH_BUFFER_PREVIEW,0)
@@ -550,7 +550,7 @@ class QuadrupedGymEnv(gym.Env):
     z_low, z_upp = 0.005, z_height
     # block orientations
     roll_low, roll_upp = -0.01, 0.01
-    pitch_low, pitch_upp = -0.01, 0.01 
+    pitch_low, pitch_upp = -0.01, 0.01
     yaw_low, yaw_upp = -np.pi, np.pi
 
     x = x_low + np.random.random(num_rand) * (x_upp - x_low)
@@ -571,7 +571,7 @@ class QuadrupedGymEnv(gym.Env):
       # set friction coeff
       self._pybullet_client.changeDynamics(block2, -1, lateralFriction=self._ground_mu_k)
 
-    # add walls 
+    # add walls
     orn = self._pybullet_client.getQuaternionFromEuler([0,0,0])
     sh_colBox = self._pybullet_client.createCollisionShape(self._pybullet_client.GEOM_BOX,
         halfExtents=[x_upp/2,0.5,0.5])
@@ -598,22 +598,22 @@ class QuadrupedGymEnv(gym.Env):
     if self._is_render:
       print('=========================== Random Mass:')
       print('Mass:', base_mass, 'location:', block_pos_delta_base_frame)
-      # if rendering, also want to set the halfExtents accordingly 
-      # 1 kg water is 0.001 cubic meters 
+      # if rendering, also want to set the halfExtents accordingly
+      # 1 kg water is 0.001 cubic meters
       boxSizeHalf = [(base_mass*0.001)**(1/3) / 2]*3
       translationalOffset = [0,0,0.1]
     else:
       boxSizeHalf = [0.05]*3
       translationalOffset = [0]*3
 
-    sh_colBox = self._pybullet_client.createCollisionShape(self._pybullet_client.GEOM_BOX, 
+    sh_colBox = self._pybullet_client.createCollisionShape(self._pybullet_client.GEOM_BOX,
                       halfExtents=boxSizeHalf, collisionFramePosition=translationalOffset)
     base_block_ID=self._pybullet_client.createMultiBody(baseMass=base_mass,
                                     baseCollisionShapeIndex = sh_colBox,
                                     basePosition = quad_base + block_pos_delta_base_frame,
                                     baseOrientation=[0,0,0,1])
 
-    cid = self._pybullet_client.createConstraint(quad_ID, -1, base_block_ID, -1, 
+    cid = self._pybullet_client.createConstraint(quad_ID, -1, base_block_ID, -1,
           self._pybullet_client.JOINT_FIXED, [0, 0, 0], [0, 0, 0], -block_pos_delta_base_frame)
     # disable self collision between box and each link
     for i in range(-1,self._pybullet_client.getNumJoints(quad_ID)):
@@ -621,7 +621,7 @@ class QuadrupedGymEnv(gym.Env):
 
 
 def test_env():
-  env = QuadrupedGymEnv(render=True, 
+  env = QuadrupedGymEnv(render=True,
                         on_rack=True,
                         motor_control_mode='PD',
                         action_repeat=100,
