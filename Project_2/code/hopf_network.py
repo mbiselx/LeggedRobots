@@ -36,10 +36,10 @@ class HopfNetwork():
                 # gait="BOUND",            # change depending on desired gait
                 coupling_strength=1,    # coefficient to multiply coupling matrix
                 couple=True,            # should couple
-                time_step=0.001,        # time step 
-                ground_clearance=0.05,  # foot swing height 
-                ground_penetration=0.01,# foot stance penetration into ground 
-                robot_height=0.25,      # in nominal case (standing) 
+                time_step=0.001,        # time step
+                ground_clearance=0.05,  # foot swing height
+                ground_penetration=0.01,# foot stance penetration into ground
+                robot_height=0.25,      # in nominal case (standing)
                 des_step_len=0.04,      # desired step length
                 ):
 
@@ -151,7 +151,7 @@ class HopfNetwork():
 
 if __name__ == "__main__":
 
-  ADD_CARTESIAN_PD = True
+  ADD_CARTESIAN_PD = False
   TIME_STEP = 0.001
   foot_y = 0.0838 # this is the hip length
   sideSign = np.array([-1, 1, -1, 1]) # get correct hip sign (body right is negative)
@@ -222,6 +222,7 @@ if __name__ == "__main__":
       #save leg position and joint angle only for Front Right Leg
       if i==0:
         foot_pos[j, :, 0] = leg_xyz #save desired position
+        _, pos = env.robot.ComputeJacobianAndPosition(i)
         foot_pos[j, :, 1] = pos #save actual positon
         joint_angles[j, :, 0] =  leg_q #save desired joint angles
         joint_angles[j, :, 1] = q[i*3:i*3+3] #save actual joint angles
@@ -241,7 +242,7 @@ if __name__ == "__main__":
 
     energy += np.sum(env.robot.GetMotorTorques()*env.robot.GetMotorVelocities())*TIME_STEP
 
-    
+
 
   #####################################################
   # PLOTS
