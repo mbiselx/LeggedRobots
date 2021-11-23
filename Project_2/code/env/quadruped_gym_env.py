@@ -403,11 +403,11 @@ class QuadrupedGymEnv(gym.Env):
     except:
       pass
     init_motor_angles = self._robot_config.INIT_MOTOR_ANGLES + self._robot_config.JOINT_OFFSETS
-    if self._is_render:
-      time.sleep(0.2)
-    for _ in range(1000): # NOTE: modified from 1000
+    # if self._is_render: # NOTE: modified 
+    #   time.sleep(0.2)
+    for _ in range(1000):
       self.robot.ApplyAction(init_motor_angles)
-      # if self._is_render:
+      # if self._is_render: # NOTE: commented
       #   time.sleep(0.0001)
       self._pybullet_client.stepSimulation()
 

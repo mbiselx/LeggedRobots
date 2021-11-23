@@ -27,8 +27,8 @@ class HopfNetwork():
   """
   def __init__(self,
                 mu=1**2,                # converge to sqrt(mu)
-                omega_swing  =  4*np.pi,  # NOTE: modified
-                omega_stance = 10*np.pi,  # NOTE: modified
+                omega_swing  = 10*np.pi,  # NOTE: modified
+                omega_stance =  5*np.pi,  # NOTE: modified
                 gait="TROT",            # change depending on desired gait
                 coupling_strength=1,    # coefficient to multiply coupling matrix
                 couple=True,            # should couple
@@ -62,6 +62,13 @@ class HopfNetwork():
     self._robot_height = robot_height
     self._des_step_len = des_step_len
 
+  def _skew(self, FR=0, FL=0, RR=0, RL=0):
+    """
+    make the skew-symmetric matrix PHI for a gait
+    """
+    base = np.array([[ FR, FL, RR, RL]])
+    a = base - base.T
+    return a
 
   def _set_gait(self,gait):
     """ For coupling oscillators in phase space.
@@ -69,38 +76,29 @@ class HopfNetwork():
     Foot Order is FR, FL, RR, RL
     """
 
-    self.PHI_trot  = np.pi * np.array([[ 0.0,  1.0,  1.0,  0.0],  # FR
-                                       [-1.0,  0.0,  0.0, -1.0],  # FL
-                                       [-1.0,  0.0,  0.0, -1.0],  # RR
-                                       [ 0.0,  1.0,  1.0,  0.0]]) # RL
-    self.PHI_bound = np.pi * np.array([[ 0.0,  0.0,  1.0,  1.0],  # FR
-                                       [ 0.0,  0.0,  1.0,  1.0],  # FL
-                                       [-1.0, -1.0,  0.0,  0.0],  # RR
-                                       [-1.0, -1.0,  0.0,  0.0]]) # RL
-    # self.PHI_trot = np.pi * np.array([[0.0, 0.0, 0.0, 0.0],  # FR
-    #                                   [0.0, 0.0, 0.0, 0.0],  # FL
-    #                                   [0.0, 0.0, 0.0, 0.0],  # RR
-    #                                   [0.0, 0.0, 0.0, 0.0]]) # RL
+    self.PHI_trot  = 2*np.pi * (self._skew( 0.0,  0.5,  0.5,  0.0) + .0)
 
-    self.PHI_walk  = np.zeros((4,4))
-    # self.PHI_bound = np.zeros((4,4))
-    self.PHI_pace  = np.zeros((4,4))
+    self.PHI_bound = 2*np.pi * (self._skew( 0.0,  0.0,  0.5,  0.5) - .0)
+
+    self.PHI_walk  = 2*np.pi * (self._skew( 0.0, -0.5, -.75, -.25) + .0)
+
+    self.PHI_pace  = 2*np.pi * (self._skew( 0.0,  0.5,  0.0,  0.5) + .0)
 
     if gait == "TROT":
-      print('TROT')
+      #print('TROT')
       self.PHI = self.PHI_trot
     elif gait == "PACE":
-      print('PACE')
+      #print('PACE')
       self.PHI = self.PHI_pace
     elif gait == "BOUND":
-      print('BOUND')
+      #print('BOUND')
       self.PHI = self.PHI_bound
     elif gait == "WALK":
-      print('WALK')
+      #print('WALK')
       self.PHI = self.PHI_walk
     else:
       raise ValueError( gait + 'not implemented.')
-
+    # print(self.PHI)
 
   def update(self):
     """ Update oscillator states. """
@@ -129,37 +127,35 @@ class HopfNetwork():
       # compute r_dot (Equation 6)
       r_dot = alpha * (self._mu - r**2)*r # NOTE: modified
       # determine whether oscillator i is in swing or stance phase to set natural frequency omega_swing or omega_stance (see Section 3)
-      if theta <= np.pi:
-        theta_dot = self._omega_stance
-      else:
+      if theta <= np.pi: # NOTE: modified
         theta_dot = self._omega_swing
-      # theta_dot = (np.sin(theta) >= 0).choose([self._omega_swing, self._omega_stance]) # NOTE: modified
+      else:
+        theta_dot = self._omega_stance
 
       # loop through other oscillators to add coupling (Equation 7)
       if self._couple:
-        theta_dot += self._coupling_strength*np.sum(X[0,:] * np.sin(X[1,:] - theta - self.PHI[i,:]) ) # NOTE: modified
+        theta_dot += np.sum(self._coupling_strength * X[0,:] * np.sin(X[1,:] - theta - self.PHI[i,:]) ) # NOTE: modified
 
       # set X_dot[:,i]
       X_dot[:,i] = [r_dot, theta_dot]
 
     # integrate
-    self.X = X + X_dot * self._dt # NOTE: modified
+    self.X = self.X + X_dot * self._dt # NOTE: modified
     # mod phase variables to keep between 0 and 2pi
     self.X[1,:] = self.X[1,:] % (2*np.pi)
-
 
 
 if __name__ == "__main__":
 
   ADD_CARTESIAN_PD = True
-  SIM_TIME = 4 # [{value for value in variable}]
+  SIM_TIME = 10 # [{value for value in variable}]
   TIME_STEP = 0.001
   foot_y = 0.0838 # this is the hip length
   sideSign = np.array([-1, 1, -1, 1]) # get correct hip sign (body right is negative)
 
   env = QuadrupedGymEnv(render=True,              # visualize
                       # on_rack=True,              # useful for debugging!
-                      on_rack=False,              # useful for debugging!
+                      on_rack=False,              # not useful for debugging!
                       isRLGymInterface=False,     # not using RL
                       time_step=TIME_STEP,
                       action_repeat=1,
@@ -167,26 +163,33 @@ if __name__ == "__main__":
                       add_noise=False,    # start in ideal conditions
                       # record_video=True
                       )
-  print("env setup done")
+  #print("env setup done")
 
   # initialize Hopf Network, supply gait
   cpg = HopfNetwork(time_step=TIME_STEP,
-                    omega_swing  =  4*np.pi,  # NOTE: modified
-                    omega_stance = 10*np.pi,  # NOTE: modified
-                    gait="TROT",            # change depending on desired gait
+                    # omega_swing  = 10*np.pi,  # NOTE: modified
+                    # omega_stance =  5*np.pi,  # NOTE: modified
+                    # gait="TROT",              # change depending on desired gait
+                    omega_swing  = 20*np.pi,  # NOTE: modified (works okay: 10, 50, 0.07)
+                    omega_stance = 8*np.pi,  # NOTE: modified
+                    gait="BOUND",             # change depending on desired gait
+                    #des_step_len = .06 #
+                    # omega_swing  = 15.0*np.pi,  # NOTE: modified
+                    # omega_stance =  5.0*np.pi,  # NOTE: modified
+                    # gait="WALK",            # change depending on desired gait
+                    # omega_swing  = 15.0*np.pi,  # NOTE: modified
+                    # omega_stance =  3.0*np.pi,  # NOTE: modified
+                    # gait="PACE",            # change depending on desired gait
                     )
-  # cpg = HopfNetwork(time_step=TIME_STEP,
-  #                   omega_swing  = 2*np.pi,  # NOTE: modified
-  #                   omega_stance = 20*np.pi,  # NOTE: modified
-  #                   gait="BOUND",            # change depending on desired gait
-  #                   )
-  print("cpg setup done")
+  #print("cpg setup done")
 
   TEST_STEPS = int(SIM_TIME / (TIME_STEP))
   t = np.arange(TEST_STEPS)*TIME_STEP
 
   # TODO  initialize data structures to save CPG and robot states
-  joint_pos = np.zeros((12, t.shape[0]))
+  joint_pos = np.zeros((12, TEST_STEPS))
+  cpg_states = np.zeros((TEST_STEPS, 2, 4))
+  cpg_velocities = np.zeros((TEST_STEPS-1, 2, 4))
 
   ############## Sample Gains
   # joint PD gains
@@ -234,6 +237,16 @@ if __name__ == "__main__":
 
     # TODO  save any CPG or robot states
     joint_pos[:,j] = q
+    cpg_states[j] = cpg.X
+    if j > 0:
+      cpg_velocities[j-1] = cpg_states[j] - cpg_states[j-1]
+      cpg_velocities[j-1,1,:] = cpg_velocities[j-1,1,:] % (2*np.pi)
+      cpg_velocities[j-1] = cpg_velocities[j-1] / cpg._dt
+
+
+    if env.is_fallen():
+      print("robot has fallen")
+      break
 
 
   #####################################################
@@ -247,4 +260,26 @@ if __name__ == "__main__":
   # plt.plot(t,joint_pos[9+1,:], label='RL thigh')
   # plt.xlabel("t [s]")
   # plt.legend()
-  # plt.show()
+
+  # fig = plt.figure()
+  # ax1 = plt.subplot(2, 2, 1)
+  # plt.title("amplitude")
+  # ax1.plot(t,cpg_states[:, 0, :])
+  # ax1.legend(['FR', 'FL', 'RR', 'RL'])
+  #
+  # ax2 = plt.subplot(2, 2, 2)
+  # plt.title('theta')
+  # ax2.plot(t,cpg_states[:, 1, :])
+  # ax2.legend(['FR', 'FL', 'RR', 'RL'])
+  #
+  # ax3 = plt.subplot(2, 2, 3)
+  # plt.title('r velocity')
+  # ax3.plot(t[0:-1],cpg_velocities[:, 0, :])
+  # ax3.legend(['FR', 'FL', 'RR', 'RL'])
+  #
+  # ax4 = plt.subplot(2, 2, 4)
+  # plt.title('theta velocity')
+  # ax4.plot(t[0:-1],cpg_velocities[:, 1, :])
+  # ax4.legend(['FR', 'FL', 'RR', 'RL'])
+
+  plt.show()
