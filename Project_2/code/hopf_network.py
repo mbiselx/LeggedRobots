@@ -73,7 +73,7 @@ class HopfNetwork():
 
   def _set_gait(self,gait):
     """ For coupling oscillators in phase space.
-    TODO update all coupling matrices
+    NOTE: updated all coupling matrices
     Foot Order is FR, FL, RR, RL
     """
 
@@ -108,7 +108,7 @@ class HopfNetwork():
     self._integrate_hopf_equations()
 
     # map CPG variables to Cartesian foot xz positions (Equations 8, 9)
-    x = -self._des_step_len*self.X[0, :]*np.cos(self.X[1, :]) # [TODO]
+    x = -self._des_step_len*self.X[0, :]*np.cos(self.X[1, :]) # [NOTE]
     z = np.zeros(4)
     for i in range(4):
       if np.sin(self.X[1, i]) > 0:
@@ -129,9 +129,9 @@ class HopfNetwork():
     # loop through each leg's oscillator
     for i in range(4):
       # get r_i, theta_i from X
-      r, theta = self.X[0, i], self.X[1, i] # [TODO]
+      r, theta = self.X[0, i], self.X[1, i] # [NOTE]
       # compute r_dot (Equation 6)
-      r_dot = alpha * (self._mu - r**2) * r # [TODO]
+      r_dot = alpha * (self._mu - r**2) * r # [NOTE]
       # determine whether oscillator i is in swing or stance phase to set natural frequency omega_swing or omega_stance (see Section 3)
       if np.sin(theta) > 0:
         theta_dot = self._omega_swing
@@ -154,7 +154,7 @@ class HopfNetwork():
 if __name__ == "__main__":
 
   ADD_CARTESIAN_PD = True
-  SIM_TIME = 2 # [{value for value in variable}]
+  SIM_TIME = 20 # [{value for value in variable}]
   TIME_STEP = 0.001
   foot_y = 0.0838 # this is the hip length
   sideSign = np.array([-1, 1, -1, 1]) # get correct hip sign (body right is negative)
@@ -191,7 +191,7 @@ if __name__ == "__main__":
   TEST_STEPS = int(SIM_TIME / (TIME_STEP))
   t = np.arange(TEST_STEPS)*TIME_STEP
 
-  # TODO  initialize data structures to save CPG and robot states
+  # NOTE: initialized data structures to save CPG and robot states
   joint_pos = np.zeros((12, TEST_STEPS))
   cpg_states = np.zeros((TEST_STEPS, 2, 4))
   cpg_velocities = np.zeros((TEST_STEPS-1, 2, 4))
@@ -226,18 +226,18 @@ if __name__ == "__main__":
       # get desired foot i pos (xi, yi, zi) in leg frame
       leg_xyz = np.array([xs[i], sideSign[i] * foot_y, zs[i]])
       # call inverse kinematics to get corresponding joint angles (see ComputeInverseKinematics() in quadruped.py)
-      leg_q = env.robot.ComputeInverseKinematics(i, leg_xyz) # [TODO]
+      leg_q = env.robot.ComputeInverseKinematics(i, leg_xyz) # [NOTE]
       # Add joint PD contribution to tau for leg i (Equation 4)
-      tau += kp*(leg_q-q[i*3:i*3+3]) + kd*(0-dq[i*3:i*3+3]) # [TODO]  # what is dqd????????
+      tau += kp*(leg_q-q[i*3:i*3+3]) + kd*(0-dq[i*3:i*3+3]) # [NOTE]  # what is dqd????????
 
       # add Cartesian PD contribution
       if ADD_CARTESIAN_PD:
         # Get current Jacobian and foot position in leg frame (see ComputeJacobianAndPosition() in quadruped.py)
-        J, pos = env.robot.ComputeJacobianAndPosition(i) # [TODO]
+        J, pos = env.robot.ComputeJacobianAndPosition(i) # [NOTE]
         # Get current foot velocity in leg frame (Equation 2)
-        v = np.matmul(J, dq[i*3:i*3+3]) # [TODO]
+        v = np.matmul(J, dq[i*3:i*3+3]) # [NOTE]
         # Calculate torque contribution from Cartesian PD (Equation 5) [Make sure you are using matrix multiplications]
-        tau += np.matmul(J.T, np.matmul(kpCartesian, (leg_xyz-pos))+ np.matmul(kdCartesian, (0-v))) # [TODO] # vd???
+        tau += np.matmul(J.T, np.matmul(kpCartesian, (leg_xyz-pos))+ np.matmul(kdCartesian, (0-v))) # [NOTE] # vd???
 
       #save leg position and joint angle only for Front Right Leg
       if i==0:
@@ -253,7 +253,7 @@ if __name__ == "__main__":
     # send torques to robot and simulate TIME_STEP seconds
     env.step(action)
 
-    # [TODO] save any CPG or robot states
+    # [NOTE] save any CPG or robot states
     cpg_states[j] = cpg.X
     if j > 0:
       cpg_velocities[j-1] = cpg_states[j] - cpg_states[j-1]
@@ -297,7 +297,7 @@ if __name__ == "__main__":
   ax[1,1].set_ylabel('theta_dot')
   ax[1,1].legend(['FR', 'FL', 'RR', 'RL'])
 
-  plt.show()
+  # plt.show()
 
   #----------------------------------------------------------------------------#
   # plot: desired/actual foot position
@@ -323,7 +323,7 @@ if __name__ == "__main__":
   ax[2].set_ylabel('z position')
   ax[2].legend(['desired foot position', 'actual foot position'])
 
-  plt.show()
+  # plt.show()
 
   #----------------------------------------------------------------------------#
   # plot: desired/actual joint angles
