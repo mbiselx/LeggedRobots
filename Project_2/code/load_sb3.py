@@ -6,8 +6,9 @@ import matplotlib
 import matplotlib.pyplot as plt
 from sys import platform
 if platform =="darwin": # mac
-  import PyQt5
-  matplotlib.use("Qt5Agg")
+  #import PyQt5
+  #matplotlib.use("Qt5Agg")
+  pass
 else: # linux
   matplotlib.use('TkAgg')
 
@@ -26,8 +27,7 @@ from utils.file_utils import get_latest_model, load_all_results
 LEARNING_ALG = "PPO"
 interm_dir = "./logs/intermediate_models/"
 # path to saved models, i.e. interm_dir + '111121133812'
-# log_dir = interm_dir + 'test2'
-log_dir = interm_dir + 'test_w_obs'
+log_dir = interm_dir + '113021152953'
 
 # initialize env configs (render at test time)
 # check ideal conditions, as well as robustness to UNSEEN noise during training
