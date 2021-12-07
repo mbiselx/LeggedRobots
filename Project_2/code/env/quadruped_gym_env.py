@@ -62,20 +62,21 @@ class QuadrupedGymEnv(gym.Env):
   """
   def __init__(
       self,
-      robot_config=robot_config,
-      isRLGymInterface=True,
-      time_step=0.001,
-      action_repeat=10,
-      distance_weight=2,
-      energy_weight=0.008,
-      motor_control_mode="PD",
-      task_env="FWD_LOCOMOTION",
+      robot_config       = robot_config,
+      isRLGymInterface   = True,
+      time_step          = 0.001,
+      action_repeat      = 10,
+      heading_weight     = 1,
+      distance_weight    = 2,
+      energy_weight      = 1e-6,
+      motor_control_mode = "PD",
+      task_env           = "FWD_LOCOMOTION",
       observation_space_mode="DEFAULT",
-      on_rack=False,
-      render=False,
-      record_video=False,
-      add_noise=True,
-      test_env=False, # NOT ALLOWED FOR TRAINING!
+      on_rack            = False,
+      render             = False,
+      record_video       = False,
+      add_noise          = True,
+      test_env           = False, # NOT ALLOWED FOR TRAINING!
       **kwargs): # any extra arguments from legacy
     """Initialize the quadruped gym environment.
 
@@ -102,6 +103,7 @@ class QuadrupedGymEnv(gym.Env):
     self._isRLGymInterface = isRLGymInterface
     self._time_step = time_step
     self._action_repeat = action_repeat
+    self._heading_weight  = heading_weight
     self._distance_weight = distance_weight
     self._energy_weight = energy_weight
     self._motor_control_mode = motor_control_mode
@@ -130,10 +132,12 @@ class QuadrupedGymEnv(gym.Env):
 
     self.setupActionSpace()
     self.setupObservationSpace()
+
     if self._is_render:
       self._pybullet_client = bc.BulletClient(connection_mode=pybullet.GUI)
     else:
       self._pybullet_client = bc.BulletClient()
+
     self._configure_visualizer()
 
     self.videoLogID = None
@@ -155,8 +159,24 @@ class QuadrupedGymEnv(gym.Env):
     elif self._observation_space_mode == "LR_COURSE_OBS":
       # [TODO] Set observation upper and lower ranges. What are reasonable limits?
       # Note 50 is arbitrary below, you may have more or less
-      observation_high = (np.zeros(50) + OBSERVATION_EPS)
-      observation_low = (np.zeros(50) -  OBSERVATION_EPS)
+
+      observation_high = np.concatenate((self._robot_config.UPPER_ANGLE_JOINT,
+                                         self._robot_config.VELOCITY_LIMITS,
+                                         self._robot_config.TORQUE_LIMITS,
+                                         np.array([1.0]*3),
+                                         np.array([1.0]*4),
+                                         9.8 * 13 * np.array([1.0]*4)
+                                         )) + OBSERVATION_EPS
+
+      observation_low  = np.concatenate((self._robot_config.LOWER_ANGLE_JOINT,
+                                        -self._robot_config.VELOCITY_LIMITS,
+                                        -self._robot_config.TORQUE_LIMITS,
+                                         np.array([-1.0]*3),
+                                         np.array([-1.0]*4),
+                                         np.array([0]*4)
+                                         )) - OBSERVATION_EPS
+
+
     else:
       raise ValueError("observation space not defined or not intended")
 
@@ -180,9 +200,14 @@ class QuadrupedGymEnv(gym.Env):
                                           self.robot.GetMotorVelocities(),
                                           self.robot.GetBaseOrientation() ))
     elif self._observation_space_mode == "LR_COURSE_OBS":
-      # [TODO] Get observation from robot. What are reasonable measurements we could get on hardware?
-      # 50 is arbitrary
-      self._observation = np.zeros(50)
+      # [TODO  Get observation from robot. What are reasonable measurements we could get on hardware?
+      self._observation = np.concatenate((self.robot.GetMotorAngles(),
+                                          self.robot.GetMotorVelocities(),
+                                          self.robot.GetMotorTorques(),
+                                          self.robot.GetBaseOrientation(),
+                                          self.robot.GetTrueBaseRollPitchYawRate(), # gyros
+                                          self.robot.GetContactInfo()[2]            # normal forces
+                                          ))
 
     else:
       raise ValueError("observation space not defined or not intended")
@@ -238,7 +263,36 @@ class QuadrupedGymEnv(gym.Env):
   def _reward_lr_course(self):
     """ Implement your reward function here. How will you improve upon the above? """
     # [TODO] add your reward function.
-    return 0
+
+    # reward facing forwards
+    heading_reward = np.sum(np.cos(self.robot.GetBaseOrientationRollPitchYaw())) * self._time_step * self._action_repeat
+
+    #penalize crouching
+    crouching_penalty = -abs(self.robot.GetBasePosition()[2] - self.robot._GetDefaultInitPosition()[2]) * self._time_step
+
+    # reward forward motion
+    current_base_position = self.robot.GetBasePosition()
+    forward_reward = current_base_position[0] - self._last_base_position[0]
+    max_dist = MAX_FWD_VELOCITY * self._time_step * self._action_repeat
+    forward_reward = min( forward_reward, max_dist)   # but not if it's cheating
+
+    # penalize sideways motion
+    sideways_penalty = -np.abs(current_base_position[1] - self._last_base_position[1]) \
+
+    self._last_base_position = current_base_position
+
+    # reward energy efficiency
+    energy_reward = - np.sum(self.robot.GetMotorTorques() *
+                     self.robot.GetMotorVelocities()) *                         \
+                     self._time_step /                                          \
+                     ( 9.8 * sum(self.robot.GetTotalMassFromURDF()) *           \
+                     current_base_position[0])
+
+    reward  = self._heading_weight  * (heading_reward + crouching_penalty) +    \
+              self._distance_weight * (forward_reward + sideways_penalty) +     \
+              self._energy_weight   * energy_reward
+
+    return reward
 
   def _reward(self):
     """ Get reward depending on task"""
@@ -286,20 +340,20 @@ class QuadrupedGymEnv(gym.Env):
     kpCartesian = self._robot_config.kpCartesian
     kdCartesian = self._robot_config.kdCartesian
     # get current motor velocities
-    qd = self.robot.GetMotorVelocities()
+    dq = self.robot.GetMotorVelocities()
 
     action = np.zeros(12)
     for i in range(4):
       # get Jacobian and foot position in leg frame for leg i (see ComputeJacobianAndPosition() in quadruped.py)
-      # [TODO]
+      J, pos = self.robot.ComputeJacobianAndPosition(i) # [NOTE: DONE]
       # desired foot position i (from RL above)
-      Pd = np.zeros(3) # [TODO]
+      Pd = des_foot_pos[3*i:3*i+3]
       # desired foot velocity i
       vd = np.zeros(3)
       # foot velocity in leg frame i (Equation 2)
-      # [TODO]
+      v = np.matmul(J, dq[i*3:i*3+3]) # [NOTE: DONE]
       # calculate torques with Cartesian PD (Equation 5) [Make sure you are using matrix multiplications]
-      tau = np.zeros(3) # [TODO]
+      tau = np.matmul(J.T, np.matmul(kpCartesian, (Pd-pos))+ np.matmul(kdCartesian, (vd-v))) # [NOTE: DONE]
 
       action[3*i:3*i+3] = tau
 
@@ -401,12 +455,12 @@ class QuadrupedGymEnv(gym.Env):
     except:
       pass
     init_motor_angles = self._robot_config.INIT_MOTOR_ANGLES + self._robot_config.JOINT_OFFSETS
-    if self._is_render:
-      time.sleep(0.2)
+    # if self._is_render: # NOTE: commented
+    #   time.sleep(0.2)
     for _ in range(1000):
       self.robot.ApplyAction(init_motor_angles)
-      #if self._is_render:
-        #time.sleep(0.001)
+      # if self._is_render: # NOTE: commented
+      #   time.sleep(0.0001)
       self._pybullet_client.stepSimulation()
 
     # set control mode back

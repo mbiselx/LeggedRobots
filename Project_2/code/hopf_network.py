@@ -28,12 +28,9 @@ class HopfNetwork():
   """
   def __init__(self,
                 mu=1**2,                # converge to sqrt(mu)
-                omega_swing=15*2*np.pi,  # for walk and trot
-                omega_stance=2.5*2*np.pi, # for walk and trot
-                gait="WALK",            # change depending on desired gait
-                # omega_swing=15*2*np.pi,  # for bound
-                # omega_stance=25*2*np.pi, # for bound
-                # gait="BOUND",            # change depending on desired gait
+                omega_swing  = 10*np.pi,  # NOTE: modified
+                omega_stance =  5*np.pi,  # NOTE: modified
+                gait="TROT",            # change depending on desired gait
                 coupling_strength=1,    # coefficient to multiply coupling matrix
                 couple=True,            # should couple
                 time_step=0.001,        # time step
@@ -66,36 +63,44 @@ class HopfNetwork():
     self._robot_height = robot_height
     self._des_step_len = des_step_len
 
+  def _skew(self, FR=0, FL=0, RR=0, RL=0):
+    """
+    make the skew-symmetric matrix PHI for a gait
+    """
+    base = np.array([[ FR, FL, RR, RL]])
+    a = base - base.T
+    return a
 
   def _set_gait(self,gait):
     """ For coupling oscillators in phase space.
-    [TODO] update all coupling matrices
+    NOTE: updated all coupling matrices
+    Foot Order is FR, FL, RR, RL
     """
-    self.PHI_trot = 2 * np.pi * np.array([[0, 0.5, 0.5, 0],[0.5, 0, 0, 0.5],[0.5, 0, 0, 0.5],[0, 0.5, 0.5, 0]]) # from myself
-    #self.PHI_trot = np.pi*np.array([[0, -1, -1, 1],[-1, 0, 1, -1],[-1, 1, 0, -1],[1, -1, -1, 0]]) # from paper
-    #self.PHI_trot = 2*np.pi * np.array([[0, 0.5, 0.5, 0],[-0.5, 0, 0, -0.5],[-0.5, 0, 0, -0.5],[0 , 0.5, 0.5, 0]]) # from michi
-    # diagonal sequence walk:
-    #self.PHI_walk = 2*np.pi*np.array([[0, 0.5, 0.75, 0.25],[0.5, 0, 0.25, 0.75],[0.25, 0.75, 0, 0.5],[0.75, 0.25, 0.5, 0]])
-    # lateral sequence walk
-    self.PHI_walk = 2*np.pi*np.array([[0, 0.5, 0.25, 0.75],[0.5, 0, 0.75, 0.25],[0.75, 0.25, 0, 0.5],[0.25, 0.75, 0.5, 0]])
-    self.PHI_bound = 2*np.pi*np.array([[0, 0, 0.5, 0.5],[0, 0, 0.5, 0.5],[0.5, 0.5, 0, 0],[0.5, 0.5, 0, 0]])
-    #self.PHI_bound = np.array([[0, 1, -1, -1],[1, 0, -1, -1],[-1, -1, 0, 1],[-1, -1, 1, 0]])
-    self.PHI_pace = 2*np.pi*np.array([[0, 0.5, 0, 0.5],[0.5, 0, 0.5, 0],[0, 0.5, 0, 0.5],[0.5, 0, 0.5, 0]])
+
+    self.PHI_trot  = 2*np.pi * (self._skew( 0.0,  0.5,  0.5,  0.0) + .0)
+
+    self.PHI_bound = 2*np.pi * (self._skew( 0.0,  0.0,  0.5,  0.5) - .0)
+
+    self.PHI_walk  = 2*np.pi * (self._skew( 0.0, -0.5, -.75, -.25) + .0)
+
+    self.PHI_pace  = 2*np.pi * (self._skew( 0.0,  0.5,  0.0,  0.5) + .0)
 
     if gait == "TROT":
-      print('TROT')
+      #print('TROT')
       self.PHI = self.PHI_trot
     elif gait == "PACE":
-      print('PACE')
+      #print('PACE')
       self.PHI = self.PHI_pace
     elif gait == "BOUND":
-      print('BOUND')
+      #print('BOUND')
       self.PHI = self.PHI_bound
     elif gait == "WALK":
-      print('WALK')
+      #print('WALK')
       self.PHI = self.PHI_walk
     else:
       raise ValueError( gait + 'not implemented.')
+
+    self.gait = gait
 
 
   def update(self):
@@ -105,7 +110,7 @@ class HopfNetwork():
     self._integrate_hopf_equations()
 
     # map CPG variables to Cartesian foot xz positions (Equations 8, 9)
-    x = -self._des_step_len*self.X[0, :]*np.cos(self.X[1, :]) # [TODO]
+    x = -self._des_step_len*self.X[0, :]*np.cos(self.X[1, :]) # [NOTE]
     z = np.zeros(4)
     for i in range(4):
       if np.sin(self.X[1, i]) > 0:
@@ -126,9 +131,9 @@ class HopfNetwork():
     # loop through each leg's oscillator
     for i in range(4):
       # get r_i, theta_i from X
-      r, theta = self.X[0, i], self.X[1, i] # [TODO]
+      r, theta = self.X[0, i], self.X[1, i] # [NOTE]
       # compute r_dot (Equation 6)
-      r_dot = alpha * (self._mu - r**2) * r # [TODO]
+      r_dot = alpha * (self._mu - r**2) * r # [NOTE]
       # determine whether oscillator i is in swing or stance phase to set natural frequency omega_swing or omega_stance (see Section 3)
       if np.sin(theta) > 0:
         theta_dot = self._omega_swing
@@ -137,27 +142,28 @@ class HopfNetwork():
 
       # loop through other oscillators to add coupling (Equation 7)
       if self._couple:
-        theta_dot += np.sum(self.X[0,:]*self._coupling_strength*np.sin(self.X[1,:] - theta*np.ones(4) - self.PHI[i,:])) # [TODO]
+        theta_dot += np.sum(self._coupling_strength * X[0,:] * np.sin(X[1,:] - theta - self.PHI[i,:]) ) # NOTE: modified
 
       # set X_dot[:,i]
       X_dot[:,i] = [r_dot, theta_dot]
 
     # integrate
-    self.X = self.X + X_dot * self._dt # [TODO]
+    self.X = self.X + X_dot * self._dt # NOTE: modified
     # mod phase variables to keep between 0 and 2pi
     self.X[1,:] = self.X[1,:] % (2*np.pi)
 
 
-
 if __name__ == "__main__":
 
-  ADD_CARTESIAN_PD = False
+  ADD_CARTESIAN_PD = True
+  SIM_TIME = 2 # [{value for value in variable}]
   TIME_STEP = 0.001
   foot_y = 0.0838 # this is the hip length
   sideSign = np.array([-1, 1, -1, 1]) # get correct hip sign (body right is negative)
 
   env = QuadrupedGymEnv(render=True,              # visualize
-                      on_rack=False,              # useful for debugging!
+                      # on_rack=True,              # useful for debugging!
+                      on_rack=False,              # not useful for debugging!
                       isRLGymInterface=False,     # not using RL
                       time_step=TIME_STEP,
                       action_repeat=1,
@@ -165,14 +171,30 @@ if __name__ == "__main__":
                       add_noise=False,    # start in ideal conditions
                       # record_video=True
                       )
+  #print("env setup done")
 
   # initialize Hopf Network, supply gait
-  cpg = HopfNetwork(time_step=TIME_STEP)
+  cpg = HopfNetwork(time_step=TIME_STEP,
+                    # omega_swing  = 10*np.pi,  # NOTE: modified
+                    # omega_stance =  5*np.pi,  # NOTE: modified
+                    # gait="TROT",              # change depending on desired gait
+                    # omega_swing  = 30*np.pi,  # NOTE: modified (works okay: 10, 50, 0.07)
+                    # omega_stance = 50*np.pi,  # NOTE: modified
+                    # gait="BOUND",             # change depending on desired gait
+                    omega_swing  = 15.0*np.pi,  # NOTE: modified
+                    omega_stance =  5.0*np.pi,  # NOTE: modified
+                    gait="WALK",            # change depending on desired gait
+                    # omega_swing  = 15.0*np.pi,  # NOTE: modified
+                    # omega_stance =  3.0*np.pi,  # NOTE: modified
+                    # gait="PACE",            # change depending on desired gait
+                    )
+  #print("cpg setup done")
 
-  TEST_STEPS = int(2 / (TIME_STEP))
+  TEST_STEPS = int(SIM_TIME / (TIME_STEP))
   t = np.arange(TEST_STEPS)*TIME_STEP
 
-  # [TODO] initialize data structures to save CPG and robot states
+  # NOTE: initialized data structures to save CPG and robot states
+  joint_pos = np.zeros((12, TEST_STEPS))
   cpg_states = np.zeros((TEST_STEPS, 2, 4))
   cpg_velocities = np.zeros((TEST_STEPS-1, 2, 4))
   energy = 0
@@ -195,8 +217,8 @@ if __name__ == "__main__":
     action = np.zeros(12)
     # get desired foot positions from CPG
     xs,zs = cpg.update()
-    # [TODO] get current motor angles and velocities for joint PD, see GetMotorAngles(), GetMotorVelocities() in quadruped.py
-    q = env.robot.GetMotorAngles()
+    # Note: get current motor angles and velocities for joint PD, see GetMotorAngles(), GetMotorVelocities() in quadruped.py
+    q  = env.robot.GetMotorAngles()
     dq = env.robot.GetMotorVelocities()
 
     # loop through desired foot positions and calculate torques
@@ -204,20 +226,20 @@ if __name__ == "__main__":
       # initialize torques for legi
       tau = np.zeros(3)
       # get desired foot i pos (xi, yi, zi) in leg frame
-      leg_xyz = np.array([xs[i],sideSign[i] * foot_y,zs[i]])
+      leg_xyz = np.array([xs[i], sideSign[i] * foot_y, zs[i]])
       # call inverse kinematics to get corresponding joint angles (see ComputeInverseKinematics() in quadruped.py)
-      leg_q = env.robot.ComputeInverseKinematics(i, leg_xyz) # [TODO]
+      leg_q = env.robot.ComputeInverseKinematics(i, leg_xyz) # [NOTE]
       # Add joint PD contribution to tau for leg i (Equation 4)
-      tau += kp*(leg_q-q[i*3:i*3+3])+kd*(0-dq[i*3:i*3+3]) # [TODO]  # what is dqd????????
+      tau += kp*(leg_q-q[i*3:i*3+3]) + kd*(0-dq[i*3:i*3+3]) # [NOTE]  # what is dqd????????
 
       # add Cartesian PD contribution
       if ADD_CARTESIAN_PD:
         # Get current Jacobian and foot position in leg frame (see ComputeJacobianAndPosition() in quadruped.py)
-        J, pos = env.robot.ComputeJacobianAndPosition(i) # [TODO]
+        J, pos = env.robot.ComputeJacobianAndPosition(i) # [NOTE]
         # Get current foot velocity in leg frame (Equation 2)
-        v = np.matmul(J, dq[i*3:i*3+3]) # [TODO]
+        v = np.matmul(J, dq[i*3:i*3+3]) # [NOTE]
         # Calculate torque contribution from Cartesian PD (Equation 5) [Make sure you are using matrix multiplications]
-        tau += np.matmul(np.transpose(J), np.matmul(kpCartesian, (leg_xyz-pos))+ np.matmul(kdCartesian, (-v))) # [TODO] # vd???
+        tau += np.matmul(J.T, np.matmul(kpCartesian, (leg_xyz-pos))+ np.matmul(kdCartesian, (0-v))) # [NOTE] # vd???
 
       #save leg position and joint angle only for Front Right Leg
       if i==0:
@@ -233,7 +255,7 @@ if __name__ == "__main__":
     # send torques to robot and simulate TIME_STEP seconds
     env.step(action)
 
-    # [TODO] save any CPG or robot states
+    # [NOTE] save any CPG or robot states
     cpg_states[j] = cpg.X
     if j > 0:
       cpg_velocities[j-1] = cpg_states[j] - cpg_states[j-1]
@@ -243,6 +265,9 @@ if __name__ == "__main__":
     energy += np.sum(env.robot.GetMotorTorques()*env.robot.GetMotorVelocities())*TIME_STEP
 
 
+    if env.is_fallen():
+      print("robot has fallen")
+      break
 
   #####################################################
   # PLOTS
@@ -252,7 +277,10 @@ if __name__ == "__main__":
   # plot: r, theta, theta_dot, r_dot
   #----------------------------------------------------------------------------#
   fig, ax = plt.subplots(2, 2)
-  fig.suptitle('CPG states')
+  if ADD_CARTESIAN_PD:
+      fig.suptitle('{}: CPG states (with Cartesian PD)'.format(cpg.gait))
+  else:
+      fig.suptitle('{}: CPG states (without Cartesian PD)'.format(cpg.gait))
 
   ax[0,0].plot(t,cpg_states[:, 0, :])
   ax[0,0].set_xlabel('time')
@@ -274,16 +302,15 @@ if __name__ == "__main__":
   ax[1,1].set_ylabel('theta_dot')
   ax[1,1].legend(['FR', 'FL', 'RR', 'RL'])
 
-  plt.show()
 
   #----------------------------------------------------------------------------#
   # plot: desired/actual foot position
   #----------------------------------------------------------------------------#
   fig, ax = plt.subplots(3, 1)
   if ADD_CARTESIAN_PD:
-      fig.suptitle('desired/actual foot position over time (with Cartesian PD)')
+     fig.suptitle('{}: desired/actual foot position over time (with Cartesian PD)'.format(cpg.gait))
   else:
-      fig.suptitle('desired/actual foot position over time (without Cartesian PD)')
+      fig.suptitle('{}: desired/actual foot position over time (without Cartesian PD)'.format(cpg.gait))
 
   ax[0].plot(t,foot_pos[:, 0, :])
   ax[0].set_xlabel('time')
@@ -300,16 +327,15 @@ if __name__ == "__main__":
   ax[2].set_ylabel('z position')
   ax[2].legend(['desired foot position', 'actual foot position'])
 
-  plt.show()
 
   #----------------------------------------------------------------------------#
   # plot: desired/actual joint angles
   #----------------------------------------------------------------------------#
   fig, ax = plt.subplots(3, 1)
   if ADD_CARTESIAN_PD:
-      fig.suptitle('desired/actual joint angles over time (with Cartesian PD)')
+      fig.suptitle('{}: desired/actual joint angles over time (with Cartesian PD)'.format(cpg.gait))
   else:
-      fig.suptitle('desired/actual joint angles over time (without Cartesian PD)')
+      fig.suptitle('{}: desired/actual joint angles over time (without Cartesian PD)'.format(cpg.gait))
 
   ax[0].plot(t,joint_angles[:, 0, :])
   ax[0].set_xlabel('time')
