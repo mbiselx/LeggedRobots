@@ -160,8 +160,23 @@ class QuadrupedGymEnv(gym.Env):
       # [TODO] Set observation upper and lower ranges. What are reasonable limits?
       # Note 50 is arbitrary below, you may have more or less
 
-      observation_high = (np.zeros(50) + OBSERVATION_EPS)
-      observation_low = (np.zeros(50) -  OBSERVATION_EPS)
+      observation_high = np.concatenate((self._robot_config.UPPER_ANGLE_JOINT,
+                                         self._robot_config.VELOCITY_LIMITS,
+                                         self._robot_config.TORQUE_LIMITS,
+                                         np.array([1.0]*3),
+                                         np.array([1.0]*4),
+                                         9.8 * 13 * np.array([1.0]*4)
+                                         )) + OBSERVATION_EPS
+
+      observation_low  = np.concatenate((self._robot_config.LOWER_ANGLE_JOINT,
+                                        -self._robot_config.VELOCITY_LIMITS,
+                                        -self._robot_config.TORQUE_LIMITS,
+                                         np.array([-1.0]*3),
+                                         np.array([-1.0]*4),
+                                         np.array([0]*4)
+                                         )) - OBSERVATION_EPS
+
+
     else:
       raise ValueError("observation space not defined or not intended")
 
@@ -186,8 +201,13 @@ class QuadrupedGymEnv(gym.Env):
                                           self.robot.GetBaseOrientation() ))
     elif self._observation_space_mode == "LR_COURSE_OBS":
       # [TODO  Get observation from robot. What are reasonable measurements we could get on hardware?
-      # 50 is arbitrary
-      self._observation = np.zeros(50)
+      self._observation = np.concatenate((self.robot.GetMotorAngles(),
+                                          self.robot.GetMotorVelocities(),
+                                          self.robot.GetMotorTorques(),
+                                          self.robot.GetBaseOrientation(),
+                                          self.robot.GetTrueBaseRollPitchYawRate(), # gyros
+                                          self.robot.GetContactInfo()[2]            # normal forces
+                                          ))
 
     else:
       raise ValueError("observation space not defined or not intended")
@@ -245,14 +265,21 @@ class QuadrupedGymEnv(gym.Env):
     # [TODO] add your reward function.
 
     # reward facing forwards
-    heading_reward = np.cos(self.robot.GetBaseOrientationRollPitchYaw()[2]) * self._time_step * self._action_repeat
+    heading_reward = np.sum(np.cos(self.robot.GetBaseOrientationRollPitchYaw())) * self._time_step * self._action_repeat
+
+    #penalize crouching
+    crouching_penalty = -abs(self.robot.GetBasePosition()[2] - self.robot._GetDefaultInitPosition()[2]) * self._time_step
 
     # reward forward motion
     current_base_position = self.robot.GetBasePosition()
     forward_reward = current_base_position[0] - self._last_base_position[0]
-    self._last_base_position = current_base_position
     max_dist = MAX_FWD_VELOCITY * self._time_step * self._action_repeat
     forward_reward = min( forward_reward, max_dist)   # but not if it's cheating
+
+    # penalize sideways motion
+    sideways_penalty = -np.abs(current_base_position[1] - self._last_base_position[1]) \
+
+    self._last_base_position = current_base_position
 
     # reward energy efficiency
     energy_reward = - np.sum(self.robot.GetMotorTorques() *
@@ -261,8 +288,8 @@ class QuadrupedGymEnv(gym.Env):
                      ( 9.8 * sum(self.robot.GetTotalMassFromURDF()) *           \
                      current_base_position[0])
 
-    reward  = self._heading_weight  * heading_reward + \
-              self._distance_weight * forward_reward + \
+    reward  = self._heading_weight  * (heading_reward + crouching_penalty) +    \
+              self._distance_weight * (forward_reward + sideways_penalty) +     \
               self._energy_weight   * energy_reward
 
     return reward

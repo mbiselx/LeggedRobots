@@ -21,11 +21,11 @@ NUM_ENVS = 1    # how many pybullet environments to create for data collection
 USE_GPU = False # make sure to install all necessary drivers
 
 # after implementing, you will want to test how well the agent learns with your MDP:
-# env_configs = {"motor_control_mode":"CARTESIAN_PD",
-#                "task_env": "LR_COURSE_TASK",
-#                "observation_space_mode": "LR_COURSE_OBS"}
 env_configs = {"motor_control_mode":"CARTESIAN_PD",
-              "task_env": "LR_COURSE_TASK"}
+               "task_env": "LR_COURSE_TASK",
+               "observation_space_mode": "LR_COURSE_OBS"}
+# env_configs = {"motor_control_mode":"CARTESIAN_PD",
+#                "task_env": "LR_COURSE_TASK"}
 # env_configs = {}
 
 if USE_GPU and LEARNING_ALG=="SAC":
@@ -33,9 +33,10 @@ if USE_GPU and LEARNING_ALG=="SAC":
 else:
     gpu_arg = "cpu"
 
+
 if LOAD_NN:
     interm_dir = "./logs/intermediate_models/"
-    log_dir = interm_dir + '' # add path
+    log_dir = interm_dir + 'test1' # add path
     stats_path = os.path.join(log_dir, "vec_normalize.pkl")
     model_name = get_latest_model(log_dir)
 
@@ -46,14 +47,15 @@ os.makedirs(SAVE_PATH, exist_ok=True)
 checkpoint_callback = CheckpointCallback(save_freq=30000, save_path=SAVE_PATH,name_prefix='rl_model', verbose=2)
 # create Vectorized gym environment
 env = lambda: QuadrupedGymEnv(**env_configs)
-env = make_vec_env(env, monitor_dir=SAVE_PATH,n_envs=NUM_ENVS)
+env = make_vec_env(env, monitor_dir=SAVE_PATH, n_envs=NUM_ENVS)
 # normalize observations to stabilize learning (why?)
 env = VecNormalize(env, norm_obs=True, norm_reward=False, clip_obs=100.)
 
 if LOAD_NN:
-    env = lambda: QuadrupedGymEnv()
-    env = make_vec_env(env, n_envs=NUM_ENVS)
+    # env = lambda: QuadrupedGymEnv()
+    # env = make_vec_env(env, n_envs=NUM_ENVS)
     env = VecNormalize.load(stats_path, env)
+
 
 # Multi-layer perceptron (MLP) policy of two layers of size _,_
 policy_kwargs = dict(net_arch=[256,256])

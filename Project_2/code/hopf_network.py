@@ -99,7 +99,9 @@ class HopfNetwork():
       self.PHI = self.PHI_walk
     else:
       raise ValueError( gait + 'not implemented.')
-    # print(self.PHI)
+
+    self.gait = gait
+
 
   def update(self):
     """ Update oscillator states. """
@@ -154,7 +156,7 @@ class HopfNetwork():
 if __name__ == "__main__":
 
   ADD_CARTESIAN_PD = True
-  SIM_TIME = 20 # [{value for value in variable}]
+  SIM_TIME = 2 # [{value for value in variable}]
   TIME_STEP = 0.001
   foot_y = 0.0838 # this is the hip length
   sideSign = np.array([-1, 1, -1, 1]) # get correct hip sign (body right is negative)
@@ -275,7 +277,10 @@ if __name__ == "__main__":
   # plot: r, theta, theta_dot, r_dot
   #----------------------------------------------------------------------------#
   fig, ax = plt.subplots(2, 2)
-  fig.suptitle('CPG states')
+  if ADD_CARTESIAN_PD:
+      fig.suptitle('{}: CPG states (with Cartesian PD)'.format(cpg.gait))
+  else:
+      fig.suptitle('{}: CPG states (without Cartesian PD)'.format(cpg.gait))
 
   ax[0,0].plot(t,cpg_states[:, 0, :])
   ax[0,0].set_xlabel('time')
@@ -297,16 +302,15 @@ if __name__ == "__main__":
   ax[1,1].set_ylabel('theta_dot')
   ax[1,1].legend(['FR', 'FL', 'RR', 'RL'])
 
-  # plt.show()
 
   #----------------------------------------------------------------------------#
   # plot: desired/actual foot position
   #----------------------------------------------------------------------------#
   fig, ax = plt.subplots(3, 1)
   if ADD_CARTESIAN_PD:
-      fig.suptitle('desired/actual foot position over time (with Cartesian PD)')
+     fig.suptitle('{}: desired/actual foot position over time (with Cartesian PD)'.format(cpg.gait))
   else:
-      fig.suptitle('desired/actual foot position over time (without Cartesian PD)')
+      fig.suptitle('{}: desired/actual foot position over time (without Cartesian PD)'.format(cpg.gait))
 
   ax[0].plot(t,foot_pos[:, 0, :])
   ax[0].set_xlabel('time')
@@ -323,16 +327,15 @@ if __name__ == "__main__":
   ax[2].set_ylabel('z position')
   ax[2].legend(['desired foot position', 'actual foot position'])
 
-  # plt.show()
 
   #----------------------------------------------------------------------------#
   # plot: desired/actual joint angles
   #----------------------------------------------------------------------------#
   fig, ax = plt.subplots(3, 1)
   if ADD_CARTESIAN_PD:
-      fig.suptitle('desired/actual joint angles over time (with Cartesian PD)')
+      fig.suptitle('{}: desired/actual joint angles over time (with Cartesian PD)'.format(cpg.gait))
   else:
-      fig.suptitle('desired/actual joint angles over time (without Cartesian PD)')
+      fig.suptitle('{}: desired/actual joint angles over time (without Cartesian PD)'.format(cpg.gait))
 
   ax[0].plot(t,joint_angles[:, 0, :])
   ax[0].set_xlabel('time')
