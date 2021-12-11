@@ -176,11 +176,11 @@ class QuadrupedGymEnv(gym.Env):
                                          np.array([0]*4)
                                          )) - OBSERVATION_EPS
 
-
     else:
       raise ValueError("observation space not defined or not intended")
 
     self.observation_space = spaces.Box(observation_low, observation_high, dtype=np.float32)
+
 
   def setupActionSpace(self):
     """ Set up action space for RL. """
@@ -277,7 +277,7 @@ class QuadrupedGymEnv(gym.Env):
     forward_reward = min( forward_reward, max_dist)   # but not if it's cheating
 
     # penalize sideways motion
-    sideways_penalty = -np.abs(current_base_position[1] - self._last_base_position[1]) \
+    sideways_penalty = -np.abs(current_base_position[1] - self._last_base_position[1])
 
     self._last_base_position = current_base_position
 
@@ -388,7 +388,10 @@ class QuadrupedGymEnv(gym.Env):
     if self._termination() or self.get_sim_time() > self._MAX_EP_LEN:
       done = True
 
-    return np.array(self._noisy_observation()), reward, done, {'base_pos': self.robot.GetBasePosition()}
+    return np.array(self._noisy_observation()), reward, done, {                 \
+        'base_pos':     self.robot.GetBasePosition(),                           \
+        'joint_pos':    self.robot.GetMotorAngles()[0:3]                       \
+        }
 
   ######################################################################################
   # Reset

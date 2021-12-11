@@ -27,13 +27,13 @@ LEARNING_ALG = "PPO"
 interm_dir = "./logs/intermediate_models/"
 # path to saved models, i.e. interm_dir + '111121133812'
 # log_dir = interm_dir + 'test2'
-log_dir = interm_dir + 'test_w_obs'
+log_dir = interm_dir + '120721155156'
 
 # initialize env configs (render at test time)
 # check ideal conditions, as well as robustness to UNSEEN noise during training
-env_config = {"motor_control_mode":"CARTESIAN_PD",
-               "task_env": "LR_COURSE_TASK",
-               "observation_space_mode": "LR_COURSE_OBS"}
+env_config = {"motor_control_mode"      : "CARTESIAN_PD",
+               "task_env"               : "LR_COURSE_TASK",
+               "observation_space_mode" : "LR_COURSE_OBS"}
 # env_config = {"motor_control_mode":"CARTESIAN_PD", # TODO
 #                "task_env": "LR_COURSE_TASK"}
 # env_config = {}
@@ -68,20 +68,33 @@ print("\nLoaded model", model_name, "\n")
 obs = env.reset()
 episode_reward = 0
 
-# [TODO  initialize arrays to save data from simulation
-#
+# NOTE: initialize arrays to save data from simulation
+TEST_STEPS = 2000
+joint_pos = np.zeros((12, TEST_STEPS))
+states = np.zeros((TEST_STEPS, 2, 4))
+velocities = np.zeros((TEST_STEPS-1, 2, 4))
+energy = 0
 
-for i in range(2000):
+for i in range(TEST_STEPS):
     action, _states = model.predict(obs,deterministic=False) # sample at test time? ([TODO : test)
     obs, rewards, dones, info = env.step(action)
     episode_reward += rewards
+    # print("info " + str(info))
     if dones:
         print('episode_reward', episode_reward)
         episode_reward = 0
+
 if not dones :
     print('episode_reward', episode_reward)
     episode_reward = 0
 
-    # [TODO  save data from current robot states for plots
 
-# [TODO  make plots:
+
+
+
+
+
+
+#####################################################
+# PLOTS
+#####################################################
