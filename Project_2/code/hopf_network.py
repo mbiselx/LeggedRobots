@@ -230,7 +230,7 @@ if __name__ == "__main__":
       # call inverse kinematics to get corresponding joint angles (see ComputeInverseKinematics() in quadruped.py)
       leg_q = env.robot.ComputeInverseKinematics(i, leg_xyz) # [NOTE]
       # Add joint PD contribution to tau for leg i (Equation 4)
-      tau += kp*(leg_q-q[i*3:i*3+3]) + kd*(0-dq[i*3:i*3+3]) # [NOTE]  # what is dqd????????
+      tau += kp*(leg_q-q[i*3:i*3+3]) + kd*(0-dq[i*3:i*3+3]) # [NOTE]
 
       # add Cartesian PD contribution
       if ADD_CARTESIAN_PD:

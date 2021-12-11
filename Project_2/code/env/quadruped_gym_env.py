@@ -207,6 +207,7 @@ class QuadrupedGymEnv(gym.Env):
                                           self.robot.GetBaseOrientation(),
                                           self.robot.GetTrueBaseRollPitchYawRate(), # gyros
                                           self.robot.GetContactInfo()[2]            # normal forces
+                                          # foot position? -> redundant
                                           ))
 
     else:
@@ -274,10 +275,10 @@ class QuadrupedGymEnv(gym.Env):
     current_base_position = self.robot.GetBasePosition()
     forward_reward = current_base_position[0] - self._last_base_position[0]
     max_dist = MAX_FWD_VELOCITY * self._time_step * self._action_repeat
-    forward_reward = min( forward_reward, max_dist)   # but not if it's cheating
+    forward_reward = forward_reward  # but not if it's cheating
 
     # penalize sideways motion
-    sideways_penalty = -np.abs(current_base_position[1] - self._last_base_position[1]) \
+    sideways_penalty = -np.abs(current_base_position[1] - self._last_base_position[1])
 
     self._last_base_position = current_base_position
 
@@ -288,9 +289,33 @@ class QuadrupedGymEnv(gym.Env):
                      ( 9.8 * sum(self.robot.GetTotalMassFromURDF()) *           \
                      current_base_position[0])
 
+    # reward for long step length
+    """step_reward = np.abs(self.robot.GetMotorVelocities()[1]+self.robot.GetMotorVelocities()[2] + \
+                         self.robot.GetMotorVelocities()[4]+self.robot.GetMotorVelocities()[5] + \
+                         self.robot.GetMotorVelocities()[7]+self.robot.GetMotorVelocities()[8] + \
+                         self.robot.GetMotorVelocities()[10]+self.robot.GetMotorVelocities()[11])"""
+    
+    step_reward = 0
+    for i in range(4):
+      J, pos = self.robot.ComputeJacobianAndPosition(i) # [NOTE]
+      # Get current foot velocity in leg frame, but not from hip motor
+      v = np.matmul(J, self.robot.GetMotorVelocities()[i*3:i*3+3])
+      step_reward += np.abs(v[0])+np.abs(v[2])
+    # step_reward += max/min(foot_pos(z))
+
+    # do not reward hip motors -> implemented
+    # penalize low z position -> crouching penalty
+    # penalize deviation
+    # target motor velocity
+    # less weight to motor velocity reward (e.g. 1e-4)
+    # not taking motor velocity but foot velocity
+    # penalize change of direction (motor/foot)
+    # reward ground clearance (base_z - foot_z, evtl. max vo allne bei -> not continuous)
+
     reward  = self._heading_weight  * (heading_reward + crouching_penalty) +    \
               self._distance_weight * (forward_reward + sideways_penalty) +     \
-              self._energy_weight   * energy_reward
+              self._energy_weight   * energy_reward + \
+              1e-3 * step_reward
 
     return reward
 
@@ -358,7 +383,6 @@ class QuadrupedGymEnv(gym.Env):
       action[3*i:3*i+3] = tau
 
     return action
-
 
   def step(self, action):
     """ Step forward the simulation, given the action. """
@@ -441,7 +465,6 @@ class QuadrupedGymEnv(gym.Env):
       self.recordVideoHelper()
     return self._noisy_observation()
 
-
   def _settle_robot(self):
     """ Settle robot and add noise to init configuration. """
     # change to PD control mode to set initial position, then set back..
@@ -505,7 +528,6 @@ class QuadrupedGymEnv(gym.Env):
       output_video_filename = self.videoDirectory + '/' + datetime.datetime.now().strftime("vid-%Y-%m-%d-%H-%M-%S-%f") + ".MP4"
     logID = self.startRecordingVideo(output_video_filename)
     self.videoLogID = logID
-
 
   def configure(self, args):
     self._args = args

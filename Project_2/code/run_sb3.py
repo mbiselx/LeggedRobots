@@ -80,7 +80,7 @@ ppo_config = {  "gamma":0.99,
                 "device": gpu_arg}
 
 # What are these hyperparameters? Check here: https://stable-baselines3.readthedocs.io/en/master/modules/sac.html
-sac_config={"learning_rate":1e-4,
+sac_config={"learning_rate":learning_rate,
             "buffer_size":300000,
             "batch_size":256,
             "ent_coef":'auto',
