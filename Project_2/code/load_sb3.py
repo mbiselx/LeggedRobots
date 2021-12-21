@@ -27,7 +27,7 @@ LEARNING_ALG = "PPO"
 interm_dir = "./logs/intermediate_models/"
 # path to saved models, i.e. interm_dir + '111121133812'
 # log_dir = interm_dir + 'test2'
-log_dir = interm_dir + '120721155156'
+log_dir = interm_dir + '121121151448'
 
 # initialize env configs (render at test time)
 # check ideal conditions, as well as robustness to UNSEEN noise during training
@@ -39,6 +39,7 @@ env_config = {"motor_control_mode"      : "CARTESIAN_PD",
 # env_config = {}
 env_config['render'] = True
 env_config['record_video'] = False
+# env_config['record_video'] = True
 env_config['add_noise'] = False
 # env_config['add_noise'] = True
 # env_config['test_env'] = True
@@ -80,6 +81,7 @@ for i in range(TEST_STEPS):
     obs, rewards, dones, info = env.step(action)
     episode_reward += rewards
     # print("info " + str(info))
+    # print(info[0]["base_pos"])
     if dones:
         print('episode_reward', episode_reward)
         episode_reward = 0

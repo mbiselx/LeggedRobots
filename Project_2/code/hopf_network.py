@@ -155,7 +155,7 @@ class HopfNetwork():
 if __name__ == "__main__":
 
   ADD_CARTESIAN_PD = True
-  SIM_TIME = 12 # [{value for value in variable}]
+  SIM_TIME = 12  # [s]
   TIME_STEP = 0.001
   foot_y = 0.0838 # this is the hip length
   sideSign = np.array([-1, 1, -1, 1]) # get correct hip sign (body right is negative)
@@ -174,18 +174,21 @@ if __name__ == "__main__":
 
   # initialize Hopf Network, supply gait
   cpg = HopfNetwork(time_step=TIME_STEP,
-                    # omega_swing  = 10*np.pi,  # NOTE: modified
-                    # omega_stance =  5*np.pi,  # NOTE: modified
-                    # gait="TROT",              # change depending on desired gait
-                    # omega_swing  = 30*np.pi,  # NOTE: modified (works okay: 10, 50, 0.07)
-                    # omega_stance = 50*np.pi,  # NOTE: modified
-                    # gait="BOUND",             # change depending on desired gait
-                    omega_swing  = 15.0*np.pi,  # NOTE: modified
-                    omega_stance =  5.0*np.pi,  # NOTE: modified
-                    gait="WALK",            # change depending on desired gait
+                    # omega_swing  = 10*np.pi,    # NOTE: modified
+                    # omega_stance =  5*np.pi,    # NOTE: modified
+                    # gait="TROT",                # change depending on desired gait
+                    # omega_swing  = 30*np.pi,    # NOTE: modified (works okay: 10, 50, 0.07)
+                    # omega_stance = 50*np.pi,    # NOTE: modified
+                    # gait="BOUND",               # change depending on desired gait
+                    # omega_swing  = 24*np.pi,    # NOTE: modified (works okay: 10, 50, 0.07)
+                    # omega_stance = 44*np.pi,    # NOTE: modified
+                    # gait="BOUND",               # change depending on desired gait
                     # omega_swing  = 15.0*np.pi,  # NOTE: modified
-                    # omega_stance =  3.0*np.pi,  # NOTE: modified
-                    # gait="PACE",            # change depending on desired gait
+                    # omega_stance =  5.0*np.pi,  # NOTE: modified
+                    # gait="WALK",                # change depending on desired gait
+                    omega_swing  = 15.0*np.pi,  # NOTE: modified
+                    omega_stance =  3.0*np.pi,  # NOTE: modified
+                    gait="PACE",                # change depending on desired gait
                     )
   #print("cpg setup done")
 
@@ -213,28 +216,28 @@ if __name__ == "__main__":
 
   for j in range(TEST_STEPS):
 
-    if j == int(TEST_STEPS*1/6):
-        cpg._set_gait("TROT")
-        cpg._omega_swing  = 10*np.pi  # NOTE: modified
-        cpg._omega_stance =  5*np.pi  # NOTE: modified
-    elif j == int(TEST_STEPS*2/6):
-        cpg._set_gait("WALK")
-        cpg._omega_swing  = 15*np.pi  # NOTE: modified
-        cpg._omega_stance =  5*np.pi  # NOTE: modified
-    elif j == int(TEST_STEPS*3/6):
-        cpg._set_gait("PACE")
-        cpg._omega_swing  = 20*np.pi  # NOTE: modified
-        cpg._omega_stance =  4*np.pi  # NOTE: modified
-    elif j == int(TEST_STEPS*4/6):
-        cpg._set_gait("WALK")
-        cpg._omega_swing  = 20*np.pi  # NOTE: modified
-        cpg._omega_stance = 7*np.pi  # NOTE: modified
-    elif j == int(TEST_STEPS*5/6):
-        cpg._set_gait("BOUND")
-        cpg._omega_swing  = 25*np.pi  # NOTE: modified (works okay: 10, 50, 0.07)
-        cpg._omega_stance = 50*np.pi  # NOTE: modified
-        # cpg._omega_swing  = 30*np.pi  # NOTE: modified (works okay: 10, 50, 0.07)
-        # cpg._omega_stance = 50*np.pi  # NOTE: modified
+    # if j == int(TEST_STEPS*1/6):
+    #     cpg._set_gait("TROT")
+    #     cpg._omega_swing  = 10*np.pi  # NOTE: modified
+    #     cpg._omega_stance =  5*np.pi  # NOTE: modified
+    # elif j == int(TEST_STEPS*2/6):
+    #     cpg._set_gait("WALK")
+    #     cpg._omega_swing  = 15*np.pi  # NOTE: modified
+    #     cpg._omega_stance =  5*np.pi  # NOTE: modified
+    # elif j == int(TEST_STEPS*3/6):
+    #     cpg._set_gait("PACE")
+    #     cpg._omega_swing  = 20*np.pi  # NOTE: modified
+    #     cpg._omega_stance =  4*np.pi  # NOTE: modified
+    # elif j == int(TEST_STEPS*4/6):
+    #     cpg._set_gait("WALK")
+    #     cpg._omega_swing  = 20*np.pi  # NOTE: modified
+    #     cpg._omega_stance = 7*np.pi  # NOTE: modified
+    # elif j == int(TEST_STEPS*5/6):
+    #     cpg._set_gait("BOUND")
+    #     cpg._omega_swing  = 25*np.pi  # NOTE: modified (works okay: 10, 50, 0.07)
+    #     cpg._omega_stance = 50*np.pi  # NOTE: modified
+        # cpg._omega_swing  = 24*np.pi  # NOTE: modified (works okay: 10, 50, 0.07)
+        # cpg._omega_stance = 44*np.pi  # NOTE: modified
 
 
     # initialize torque array to send to motors

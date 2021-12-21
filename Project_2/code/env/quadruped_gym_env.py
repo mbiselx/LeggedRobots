@@ -77,6 +77,7 @@ class QuadrupedGymEnv(gym.Env):
       record_video       = False,
       add_noise          = True,
       test_env           = False, # NOT ALLOWED FOR TRAINING!
+      seed               = None,
       **kwargs): # any extra arguments from legacy
     """Initialize the quadruped gym environment.
 
@@ -141,7 +142,7 @@ class QuadrupedGymEnv(gym.Env):
     self._configure_visualizer()
 
     self.videoLogID = None
-    self.seed()
+    self.seed(seed)
     self.reset()
 
   ######################################################################################
@@ -268,7 +269,7 @@ class QuadrupedGymEnv(gym.Env):
     heading_reward = np.sum(np.cos(self.robot.GetBaseOrientationRollPitchYaw())) * self._time_step * self._action_repeat
 
     #penalize crouching
-    crouching_penalty = -abs(self.robot.GetBasePosition()[2] - self.robot._GetDefaultInitPosition()[2]) * self._time_step
+    crouching_penalty = -abs(self.robot.GetBasePosition()[2] - self.robot._GetDefaultInitPosition()[2]) * self._time_step * self._action_repeat
 
     # reward forward motion
     current_base_position = self.robot.GetBasePosition()
@@ -279,16 +280,17 @@ class QuadrupedGymEnv(gym.Env):
     # penalize sideways motion
     sideways_penalty = -np.abs(current_base_position[1] - self._last_base_position[1])
 
-    self._last_base_position = current_base_position
-
     # reward energy efficiency
     energy_reward = - np.sum(self.robot.GetMotorTorques() *
                      self.robot.GetMotorVelocities()) *                         \
-                     self._time_step /                                          \
+                     self._time_step * self._action_repeat /                    \
                      ( 9.8 * sum(self.robot.GetTotalMassFromURDF()) *           \
-                     current_base_position[0])
+                     current_base_position[0] - self._last_base_position[0])
 
-    reward  = self._heading_weight  * (heading_reward + crouching_penalty) +    \
+
+    self._last_base_position = current_base_position
+
+    reward  = self._heading_weight  * (heading_reward + crouching_penalty) +  \
               self._distance_weight * (forward_reward + sideways_penalty) +     \
               self._energy_weight   * energy_reward
 
@@ -481,6 +483,7 @@ class QuadrupedGymEnv(gym.Env):
     self.videoLogID = self._pybullet_client.startStateLogging(
                             self._pybullet_client.STATE_LOGGING_VIDEO_MP4,
                             name)
+    # return self.videoLogID
 
   def stopRecordingVideo(self):
     self._pybullet_client.stopStateLogging(self.videoLogID)
@@ -507,7 +510,7 @@ class QuadrupedGymEnv(gym.Env):
     else:
       output_video_filename = self.videoDirectory + '/' + datetime.datetime.now().strftime("vid-%Y-%m-%d-%H-%M-%S-%f") + ".MP4"
     logID = self.startRecordingVideo(output_video_filename)
-    self.videoLogID = logID
+    # self.videoLogID = logID
 
 
   def configure(self, args):
