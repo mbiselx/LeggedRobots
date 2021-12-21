@@ -155,7 +155,7 @@ class HopfNetwork():
 
 if __name__ == "__main__":
 
-  ADD_CARTESIAN_PD = True
+  ADD_CARTESIAN_PD = False
   SIM_TIME = 2 # [{value for value in variable}]
   TIME_STEP = 0.001
   foot_y = 0.0838 # this is the hip length
@@ -169,24 +169,24 @@ if __name__ == "__main__":
                       action_repeat=1,
                       motor_control_mode="TORQUE",
                       add_noise=False,    # start in ideal conditions
-                      # record_video=True
+                      record_video=False
                       )
   #print("env setup done")
 
   # initialize Hopf Network, supply gait
   cpg = HopfNetwork(time_step=TIME_STEP,
-                    # omega_swing  = 10*np.pi,  # NOTE: modified
-                    # omega_stance =  5*np.pi,  # NOTE: modified
+                    # omega_swing  = 20*2*np.pi,  # NOTE: modified, slow: 15, fast: 20
+                    # omega_stance =  5*2*np.pi,  # NOTE: modified, slow: 2.5, fast: 5
                     # gait="TROT",              # change depending on desired gait
-                    # omega_swing  = 30*np.pi,  # NOTE: modified (works okay: 10, 50, 0.07)
-                    # omega_stance = 50*np.pi,  # NOTE: modified
+                    # omega_swing  = 15*2*np.pi,  # NOTE: modified (works okay: 10, 50, 0.07), slow: 15, fast: 12
+                    # omega_stance = 25*2*np.pi,  # NOTE: modified, slow: 25, fast: 22
                     # gait="BOUND",             # change depending on desired gait
-                    omega_swing  = 15.0*np.pi,  # NOTE: modified
-                    omega_stance =  5.0*np.pi,  # NOTE: modified
-                    gait="WALK",            # change depending on desired gait
-                    # omega_swing  = 15.0*np.pi,  # NOTE: modified
-                    # omega_stance =  3.0*np.pi,  # NOTE: modified
-                    # gait="PACE",            # change depending on desired gait
+                    # omega_swing  = 15*2*np.pi,  # NOTE: modified, fast: 15, slow: 9
+                    # omega_stance =  2.5*2*np.pi,  # NOTE: modified, fast: 2.5, slow: 1
+                    # gait="WALK",            # change depending on desired gait
+                    omega_swing  = 15*2*np.pi,  # NOTE: modified, fast: 15, slow: 10
+                    omega_stance = 2.5*2*np.pi,  # NOTE: modified, fast: 2.5, slow: 2
+                    gait="PACE",            # change depending on desired gait
                     )
   #print("cpg setup done")
 
@@ -194,10 +194,12 @@ if __name__ == "__main__":
   t = np.arange(TEST_STEPS)*TIME_STEP
 
   # NOTE: initialized data structures to save CPG and robot states
-  joint_pos = np.zeros((12, TEST_STEPS))
+  stance_array_theoretical = np.zeros((int(TEST_STEPS/2), 1))
+  stance_array_simulation = np.zeros((int(TEST_STEPS/2), 1))
   cpg_states = np.zeros((TEST_STEPS, 2, 4))
   cpg_velocities = np.zeros((TEST_STEPS-1, 2, 4))
   energy = 0
+  lin_x_vel = np.zeros((int(TEST_STEPS/2), 1))
 
   ############## Sample Gains
   # joint PD gains
@@ -261,6 +263,14 @@ if __name__ == "__main__":
       cpg_velocities[j-1] = cpg_states[j] - cpg_states[j-1]
       cpg_velocities[j-1,1,:] = cpg_velocities[j-1,1,:] % (2*np.pi)
       cpg_velocities[j-1] = cpg_velocities[j-1] / cpg._dt
+
+    if j>=int(TEST_STEPS/2):#only save after convergence to steady gait
+        if np.sin(cpg.X[1,0])>0:
+            stance_array_theoretical[j-int(TEST_STEPS/2)]=0
+        else:
+            stance_array_theoretical[j-int(TEST_STEPS/2)]=1
+        stance_array_simulation[j-int(TEST_STEPS/2)]=env.robot.GetContactInfo()[3][0]
+        lin_x_vel[j-int(TEST_STEPS/2)] = env.robot.GetBaseLinearVelocity()[0]
 
     energy += np.sum(env.robot.GetMotorTorques()*env.robot.GetMotorVelocities())*TIME_STEP
 
@@ -352,9 +362,21 @@ if __name__ == "__main__":
   ax[2].set_ylabel('calf angle (q2)')
   ax[2].legend(['desired joint angle', 'actual joint angle'])
 
+  fig, ax = plt.subplots(1, 1)
+  ax.plot(lin_x_vel)
+
   plt.show()
 
+
+  #----------------------------------------------------------------------------#
+  # measurement prints
+  #----------------------------------------------------------------------------#
+
   print("Avg velocity: " + str(env.robot.GetBasePosition()[0]/(TEST_STEPS*TIME_STEP)))
+  print("Avg velocity (without convergence) " + str(np.mean(lin_x_vel)))
   print("CoT: " + str(energy / (sum(env.robot.GetTotalMassFromURDF()) * 9.81 * env.robot.GetBasePosition()[0])))
+
+  print("Duty Factor Theoretical = Stance duration / Stride duration = " +str(np.sum(stance_array_theoretical)/int(TEST_STEPS/2)))
+  print("Duty Factor Simulation = Stance duration / Stride duration = " +str(np.sum(stance_array_simulation)/int(TEST_STEPS/2)))
 
   print("finished!")
