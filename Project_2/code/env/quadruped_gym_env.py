@@ -130,6 +130,10 @@ class QuadrupedGymEnv(gym.Env):
     self._MAX_EP_LEN = EPISODE_LENGTH # max sim time in seconds, arbitrary
     self._action_bound = 1.0
 
+    # metrics
+    self._CoT = 0
+    self._legs_z = [0, 0, 0, 0]
+
     self.setupActionSpace()
     self.setupObservationSpace()
 
@@ -141,7 +145,7 @@ class QuadrupedGymEnv(gym.Env):
     self._configure_visualizer()
 
     self.videoLogID = None
-    self.seed()
+    self.seed(9001)
     self.reset()
 
   ######################################################################################
@@ -280,14 +284,17 @@ class QuadrupedGymEnv(gym.Env):
     # penalize sideways motion
     sideways_penalty = -np.abs(current_base_position[1] - self._last_base_position[1])
 
-    self._last_base_position = current_base_position
+    
 
     # reward energy efficiency
-    energy_reward = - np.sum(self.robot.GetMotorTorques() *
+    energy_reward = - np.sum(self.robot.GetMotorTorques() *                     \
                      self.robot.GetMotorVelocities()) *                         \
                      self._time_step /                                          \
                      ( 9.8 * sum(self.robot.GetTotalMassFromURDF()) *           \
-                     current_base_position[0])
+                     (current_base_position[0]-self._last_base_position[0]))
+                     
+    self._last_base_position = current_base_position 
+    self._CoT = np.sum(self.robot.GetMotorTorques() * self.robot.GetMotorVelocities()) * self._time_step
 
     # reward for long step length
     """step_reward = np.abs(self.robot.GetMotorVelocities()[1]+self.robot.GetMotorVelocities()[2] + \
@@ -298,19 +305,11 @@ class QuadrupedGymEnv(gym.Env):
     step_reward = 0
     for i in range(4):
       J, pos = self.robot.ComputeJacobianAndPosition(i) # [NOTE]
+      self._legs_z[i] = pos[2] + self.robot.GetBasePosition()[2]
       # Get current foot velocity in leg frame, but not from hip motor
       v = np.matmul(J, self.robot.GetMotorVelocities()[i*3:i*3+3])
       step_reward += np.abs(v[0])+np.abs(v[2])
-    # step_reward += max/min(foot_pos(z))
 
-    # do not reward hip motors -> implemented
-    # penalize low z position -> crouching penalty
-    # penalize deviation
-    # target motor velocity
-    # less weight to motor velocity reward (e.g. 1e-4)
-    # not taking motor velocity but foot velocity
-    # penalize change of direction (motor/foot)
-    # reward ground clearance (base_z - foot_z, evtl. max vo allne bei -> not continuous)
 
     reward  = self._heading_weight  * (heading_reward + crouching_penalty) +    \
               self._distance_weight * (forward_reward + sideways_penalty) +     \
@@ -412,7 +411,14 @@ class QuadrupedGymEnv(gym.Env):
     if self._termination() or self.get_sim_time() > self._MAX_EP_LEN:
       done = True
 
-    return np.array(self._noisy_observation()), reward, done, {'base_pos': self.robot.GetBasePosition()}
+    return np.array(self._noisy_observation()), reward, done, {                              \
+                    "base_pos":      self.robot.GetBasePosition(),                           \
+                    "base_vel":      self.robot.GetBaseLinearVelocity(),
+                    "joint_pos":     self.robot.GetMotorAngles()[0:3],                       \
+                    "CoT":           self._CoT,                                              \
+                    "legs_z":        self._legs_z,                                           \
+                    "ground_contact":self.robot.GetContactInfo()[3]
+                    }
 
   ######################################################################################
   # Reset
