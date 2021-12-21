@@ -86,16 +86,16 @@ class HopfNetwork():
     self.PHI_pace  = 2*np.pi * (self._skew( 0.0,  0.5,  0.0,  0.5) + .0)
 
     if gait == "TROT":
-      #print('TROT')
+      print('TROT')
       self.PHI = self.PHI_trot
     elif gait == "PACE":
-      #print('PACE')
+      print('PACE')
       self.PHI = self.PHI_pace
     elif gait == "BOUND":
-      #print('BOUND')
+      print('BOUND')
       self.PHI = self.PHI_bound
     elif gait == "WALK":
-      #print('WALK')
+      print('WALK')
       self.PHI = self.PHI_walk
     else:
       raise ValueError( gait + 'not implemented.')
@@ -142,7 +142,8 @@ class HopfNetwork():
 
       # loop through other oscillators to add coupling (Equation 7)
       if self._couple:
-        theta_dot += np.sum(self._coupling_strength * X[0,:] * np.sin(X[1,:] - theta - self.PHI[i,:]) ) # NOTE: modified
+        theta_dot += np.sum(self._coupling_strength * X[0,:] * np.sin(X[1,:] -  \
+                            theta - self.PHI[i,:]) ) # NOTE: modified
 
       # set X_dot[:,i]
       X_dot[:,i] = [r_dot, theta_dot]
@@ -155,10 +156,10 @@ class HopfNetwork():
 
 if __name__ == "__main__":
 
-  ADD_CARTESIAN_PD = False
-  SIM_TIME = 2 # [{value for value in variable}]
-  TIME_STEP = 0.001
-  foot_y = 0.0838 # this is the hip length
+  ADD_CARTESIAN_PD  = True
+  SIM_TIME          = 5         # [s] length of the simulation
+  TIME_STEP         = 0.001     # [s]
+  foot_y            = 0.0838    # [m] this is the hip length
   sideSign = np.array([-1, 1, -1, 1]) # get correct hip sign (body right is negative)
 
   env = QuadrupedGymEnv(render=True,              # visualize
@@ -171,7 +172,6 @@ if __name__ == "__main__":
                       add_noise=False,    # start in ideal conditions
                       record_video=False
                       )
-  #print("env setup done")
 
   # initialize Hopf Network, supply gait
   cpg = HopfNetwork(time_step=TIME_STEP,
@@ -181,14 +181,13 @@ if __name__ == "__main__":
                     # omega_swing  = 15*2*np.pi,  # NOTE: modified (works okay: 10, 50, 0.07), slow: 15, fast: 12
                     # omega_stance = 25*2*np.pi,  # NOTE: modified, slow: 25, fast: 22
                     # gait="BOUND",             # change depending on desired gait
-                    # omega_swing  = 15*2*np.pi,  # NOTE: modified, fast: 15, slow: 9
-                    # omega_stance =  2.5*2*np.pi,  # NOTE: modified, fast: 2.5, slow: 1
-                    # gait="WALK",            # change depending on desired gait
-                    omega_swing  = 15*2*np.pi,  # NOTE: modified, fast: 15, slow: 10
-                    omega_stance = 2.5*2*np.pi,  # NOTE: modified, fast: 2.5, slow: 2
-                    gait="PACE",            # change depending on desired gait
+                    omega_swing  = 15*2*np.pi,  # NOTE: modified, fast: 15, slow: 9
+                    omega_stance =  2.5*2*np.pi,  # NOTE: modified, fast: 2.5, slow: 1
+                    gait="WALK",            # change depending on desired gait
+                    # omega_swing  = 15*2*np.pi,  # NOTE: modified, fast: 15, slow: 10
+                    # omega_stance = 2.5*2*np.pi,  # NOTE: modified, fast: 2.5, slow: 2
+                    # gait="PACE",            # change depending on desired gait
                     )
-  #print("cpg setup done")
 
   TEST_STEPS = int(SIM_TIME / (TIME_STEP))
   t = np.arange(TEST_STEPS)*TIME_STEP
@@ -215,6 +214,12 @@ if __name__ == "__main__":
   joint_angles = np.zeros([TEST_STEPS, 3, 2])
 
   for j in range(TEST_STEPS):
+
+    if j == int(TEST_STEPS/2) :     # test gait changing WALK -> TROT
+        cpg._omega_swing  = 25 *2*np.pi
+        cpg._omega_stance = 2.5*2*np.pi
+        cpg._set_gait('TROT')
+
     # initialize torque array to send to motors
     action = np.zeros(12)
     # get desired foot positions from CPG
@@ -241,7 +246,8 @@ if __name__ == "__main__":
         # Get current foot velocity in leg frame (Equation 2)
         v = np.matmul(J, dq[i*3:i*3+3]) # [NOTE]
         # Calculate torque contribution from Cartesian PD (Equation 5) [Make sure you are using matrix multiplications]
-        tau += np.matmul(J.T, np.matmul(kpCartesian, (leg_xyz-pos))+ np.matmul(kdCartesian, (0-v))) # [NOTE] # vd???
+        tau += np.matmul(J.T, np.matmul(kpCartesian, (leg_xyz-pos)) +           \
+                         np.matmul(kdCartesian, (0-v))) # [NOTE] # vd???
 
       #save leg position and joint angle only for Front Right Leg
       if i==0:
@@ -272,7 +278,8 @@ if __name__ == "__main__":
         stance_array_simulation[j-int(TEST_STEPS/2)]=env.robot.GetContactInfo()[3][0]
         lin_x_vel[j-int(TEST_STEPS/2)] = env.robot.GetBaseLinearVelocity()[0]
 
-    energy += np.sum(env.robot.GetMotorTorques()*env.robot.GetMotorVelocities())*TIME_STEP
+    energy += np.sum(env.robot.GetMotorTorques() *                              \
+                     env.robot.GetMotorVelocities()) * TIME_STEP
 
 
     if env.is_fallen():
@@ -377,6 +384,6 @@ if __name__ == "__main__":
   print("CoT: " + str(energy / (sum(env.robot.GetTotalMassFromURDF()) * 9.81 * env.robot.GetBasePosition()[0])))
 
   print("Duty Factor Theoretical = Stance duration / Stride duration = " +str(np.sum(stance_array_theoretical)/int(TEST_STEPS/2)))
-  print("Duty Factor Simulation = Stance duration / Stride duration = " +str(np.sum(stance_array_simulation)/int(TEST_STEPS/2)))
+  print("Duty Factor Simulation = Stance duration / Stride duration = "  +str(np.sum(stance_array_simulation)/int(TEST_STEPS/2)))
 
   print("finished!")

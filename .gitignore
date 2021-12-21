@@ -3,16 +3,18 @@
 *.py[cod]
 
 # ignore jupyter notebook caching stuff
-*\.ipynb_checkpoints\*
+*/.ipynb_checkpoints/*
 *checkpoint.ipynb
 
 # ignore report writing
 *.gdoc
 *.doc
 *.docx
+*.pdf
 
 #ignore other garbage
 *.json
-*\desktop.ini
+*desktop.ini
 *.egg-info
-*\logs\
+*/logs
+*/videos
