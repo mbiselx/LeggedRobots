@@ -46,11 +46,7 @@ env_config['test_env'] = False
 # get latest model and normalization stats, and plot
 stats_path = os.path.join(log_dir, "vec_normalize.pkl")
 model_name = get_latest_model(log_dir)
-<<<<<<< HEAD
 # model_name = "./logs/intermediate_models/121121143740/rl_model_810000_steps.zip" # SAC model
-=======
-model_name = "./logs/intermediate_models/121121143740/rl_model_810000_steps.zip" # SAC model
->>>>>>> f975edaad8c2cfa62f6ed5b2fa9875f015e48bc8
 monitor_results = load_results(log_dir)
 print(monitor_results)
 plot_results([log_dir] , 10e10, 'timesteps', LEARNING_ALG + ' ')
@@ -134,8 +130,3 @@ print("Duty cycles: ", duty_cycles)
 
 
 plt.show()
-<<<<<<< HEAD
-=======
-
-
->>>>>>> f975edaad8c2cfa62f6ed5b2fa9875f015e48bc8
