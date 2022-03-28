@@ -8,7 +8,7 @@
 * [About the Project 1](#about-the-project-1)
 * [About the Project 2](#about-the-project-2)
 * [Folder Structure](#folder-structure)
-* [Contact](#contact)
+* [Contact](#contacts)
 
 <!-- ABOUT THE PROJECT -->
 ## About The Project 1
@@ -26,14 +26,15 @@ The resulting gaits are analyzed and discussed, and the conclusion is reached th
 | ----------------------- | -------------------------------------------------------------------------------------------------- |
 | Project_1               | folder containing the project 1                                                                    |
 | - code                  | python code for the project                                                                        |
-| Project_2               | Images used in the Jupyter Notebook                                                                |
+| Project_2               | folder containing the project 2                                                                    |
 | - code                  | python code for the project                                                                        |
 
 
 <!-- CONTACT -->
-## Contact
+## Contacts
 Biselx Michael - michael.biselx@epfl.ch <br />
 Bumann Samuel - samuel.bumann@epfl.ch
+[lvuilleu](https://github.com/lvuilleu)
 
 
 Project Link: [https://github.com/mbiselx/LeggedRobots](https://github.com/mbiselx/LeggedRobots)
