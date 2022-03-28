@@ -32,9 +32,9 @@ The resulting gaits are analyzed and discussed, and the conclusion is reached th
 
 <!-- CONTACT -->
 ## Contacts
-Biselx Michael - michael.biselx@epfl.ch <br />
-Bumann Samuel - samuel.bumann@epfl.ch
-[lvuilleu](https://github.com/lvuilleu)
+Biselx Michael - michael.biselx@epfl.ch    <br />
+Bumann Samuel  - samuel.bumann@epfl.ch     <br />
+[lvuilleu](https://github.com/lvuilleu)    <br />
 
 
 Project Link: [https://github.com/mbiselx/LeggedRobots](https://github.com/mbiselx/LeggedRobots)
